@@ -28,7 +28,7 @@ func formatShortURL(r *http.Request, id string) string {
 	return fmt.Sprintf("%s://%s/%s", scheme, r.Host, id)
 }
 
-// HandGetURL возвращает полный URL по его короткому идентификатору (GET /{id}).
+
 func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimPrefix(r.URL.Path, "/")
 	if id == "" {
@@ -46,7 +46,7 @@ func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-// HandPostFullURL обрабатывает POST-запрос на корневой путь и возвращает короткий URL.
+
 func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -63,7 +63,8 @@ func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	
+	
 
 	longURL := strings.TrimSpace(string(body))
 	if longURL == "" {
@@ -71,6 +72,10 @@ func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !strings.HasPrefix(longURL, "http://") && !strings.HasPrefix(longURL, "https://") {
+    w.WriteHeader(http.StatusBadRequest)
+    return
+}
 	shortURL, err := h.store.GetShortURL(longURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -11,8 +11,8 @@ func main() {
 	s := store.New()
 	h := handler.NewHandler(s)
 
-	// POST /  -> создание короткого URL
-	// GET  /{id} -> получение полного URL по id
+	
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/" {
 			h.HandPostFullURL(w, r)
