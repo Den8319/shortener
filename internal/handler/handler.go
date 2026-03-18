@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Den8319/shortener/internal/service/store"
+	"github.com/go-chi/chi/v5"
 )
 
 
@@ -30,7 +31,7 @@ func formatShortURL(r *http.Request, id string) string {
 
 
 func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/")
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return

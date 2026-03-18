@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestHandler_HandPostFullURL(t *testing.T) {
@@ -70,7 +73,7 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 			name:           "negative wrong body",
 			method:         http.MethodPost,
 			path:           "/",
-			body:           "http/ya.ru",
+			body:           "http/sber",
 			want : want{
 			Status: http.StatusBadRequest,
 			},
@@ -115,12 +118,17 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 
 func TestHandler_HandGetURL(t *testing.T) {
 	
+	route := chi.NewRouter()
 	s := store.New()
 	h := NewHandler(s)
+	
+	route.Post("/", h.HandPostFullURL) 
+	route.Get("/{id}", h.HandGetURL) 
 
 	
-	longURL := "https://example.com"
+	longURL := "https://sberbank.ru"
 	shortURL, err := s.GetShortURL(longURL)
+	
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)
 
@@ -164,13 +172,22 @@ func TestHandler_HandGetURL(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			
+			
 			req := httptest.NewRequest(http.MethodGet, test.path, nil)
 			w := httptest.NewRecorder()
 
-			h.HandGetURL(w, req)
+			
+			ctx := chi.NewRouteContext()
+			id := strings.TrimPrefix(test.path, "/")
+			ctx.URLParams.Add("id", id)
+			r := req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, ctx))
 
 			
-			assert.Equal(t, test.want.Status, w.Code)
+			h.HandGetURL(w, r)
+
+	        assert.Equal(t, test.want.Status, w.Code)
+
+
 			
 			if test.want.Header != "" {
 				assert.Equal(t, test.want.Value, w.Header().Get(test.want.Header))

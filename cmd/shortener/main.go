@@ -4,31 +4,25 @@ import (
 	"github.com/Den8319/shortener/internal/handler"
 	"github.com/Den8319/shortener/internal/service/store"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
 )
 
 func main() {
-	mux := http.NewServeMux()
+	route := chi.NewRouter()
 	s := store.New()
 	h := handler.NewHandler(s)
 
+	route.Post("/", h.HandPostFullURL) 
+	route.Get("/{id}", h.HandGetURL) 
+
 	
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/" {
-			h.HandPostFullURL(w, r)
-			return
-		}
-
-		if r.Method == http.MethodGet && r.URL.Path != "/" {
-			h.HandGetURL(w, r)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	})
-
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`:8080`, route)
 	if err != nil {
 		panic(err)
+
+
+
 	}
 }
