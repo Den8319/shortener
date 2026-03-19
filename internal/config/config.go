@@ -18,7 +18,7 @@ func New() *Config{
     
 	cfg := &Config{}
 
-	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "Порт HTTP сервера")
+	flag.StringVar(&cfg.ServerAddress, "a", ":8000", "Порт HTTP сервера")
 	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8000", "Базовый адрес для коротких URL")
 
 
