@@ -11,6 +11,8 @@ import (
 type Store struct {
 	urls map[string]string // map[shortURL]longURL
 	mu   sync.RWMutex
+	
+
 }
 
 const shortURLLength = 8

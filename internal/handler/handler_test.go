@@ -16,12 +16,16 @@ import (
 )
 
 func TestHandler_HandPostFullURL(t *testing.T) {
-	// Создаем мок хранилища
-	s := store.New()
-	h := NewHandler(s)
+
 
 	// Создаем тестовые данные
 	longURL := "https://sberbank.ru"
+	baseUrl := "https://sberbank.ru"
+
+
+	// Создаем мок хранилища
+	s := store.New()
+	h := NewHandler(s,baseUrl)
 
 	type want struct {
 		Status int
@@ -118,17 +122,18 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 
 func TestHandler_HandGetURL(t *testing.T) {
 	
+	longURL := "https://sberbank.ru"
+	baseUrl	:= "https://sberbank.ru"
+	
+
 	route := chi.NewRouter()
 	s := store.New()
-	h := NewHandler(s)
-	
+	h := NewHandler(s,	baseUrl)
 	route.Post("/", h.HandPostFullURL) 
 	route.Get("/{id}", h.HandGetURL) 
 
 	
-	longURL := "https://sberbank.ru"
 	shortURL, err := s.GetShortURL(longURL)
-	
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)
 

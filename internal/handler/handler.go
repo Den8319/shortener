@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -14,20 +13,13 @@ import (
 
 type Handler struct {
 	store store.Storage
+	baseUrl string
 }
 
-func NewHandler(store store.Storage) *Handler {
-	return &Handler{store: store}
+func NewHandler(store store.Storage, baseUrl string) *Handler {
+	return &Handler{store: store, baseUrl: baseUrl}
 }
 
-// formatShortURL собирает полный короткий URL с учётом схемы и хоста.
-func formatShortURL(r *http.Request, id string) string {
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	return fmt.Sprintf("%s://%s/%s", scheme, r.Host, id)
-}
 
 
 func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +77,6 @@ func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusCreated)
-	fullShortURL := formatShortURL(r, shortURL)
+	fullShortURL := h.baseUrl + "/" + shortURL
 	_, _ = w.Write([]byte(fullShortURL))
 }
