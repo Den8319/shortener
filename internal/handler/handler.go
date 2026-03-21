@@ -1,26 +1,25 @@
 package handler
 
 import (
+	"github.com/go-chi/chi/v5"
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/Den8319/shortener/internal/service/store"
-	"github.com/go-chi/chi/v5"
 )
 
-
+type Storage interface {
+	GetShortURL(longURL string) (string, error)
+	GetLongURL(shortURL string) (string, error)
+}
 
 type Handler struct {
-	store store.Storage
+	store   Storage
 	baseUrl string
 }
 
-func NewHandler(store store.Storage, baseUrl string) *Handler {
+func NewHandler(store Storage, baseUrl string) *Handler {
 	return &Handler{store: store, baseUrl: baseUrl}
 }
-
-
 
 func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -39,25 +38,13 @@ func (h *Handler) HandGetURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-
 func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
-	if r.URL.Path != "/" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	
-	
 
 	longURL := strings.TrimSpace(string(body))
 	if longURL == "" {
@@ -66,9 +53,9 @@ func (h *Handler) HandPostFullURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !strings.HasPrefix(longURL, "http://") && !strings.HasPrefix(longURL, "https://") {
-    w.WriteHeader(http.StatusBadRequest)
-    return
-}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	shortURL, err := h.store.GetShortURL(longURL)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

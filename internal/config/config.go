@@ -1,34 +1,44 @@
 package config
 
 import (
-    "flag"
-	
+	"flag"
+	"os"
 )
 
-//Флаг -a  отвечает за адрес запуска HTTP-сервера (значение может быть таким: localhost:8888).
-//Флаг -b отвечает за базовый адрес результирующего сокращённого URL (значение: адрес сервера перед коротким URL, например, http://localhost:8000/qsd54gFg).
+const (
+	envServerAddress     = "SERVER_ADDRESS"
+	flagServerAddress    = "a"
+	defaultServerAddress = ":8080"
+
+	envBaseAddress     = "BASE_URL"
+	flagBaseAddress    = "b"
+	defaultBaseAddress = "http://localhost:8080"
+)
 
 type Config struct {
-	ServerAddress  string
-	BaseURL        string
+	ServerAddress string
+	BaseURL       string // Например: "http://localhost:8080"
 }
 
+func setParam(envName, flagName, defaultValue string) string {
 
-func New() *Config{
-    
-	cfg := &Config{}
+	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
+		return envValue
+	}
 
-	flag.StringVar(&cfg.ServerAddress, "a", ":8080", "Порт HTTP сервера")
-	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "Базовый адрес для коротких URL")
+	flagAddress := flag.String(flagName, defaultValue, "")
 
+	return *flagAddress
+}
 
-	
+func New() *Config {
 
-    flag.Parse()
+	flag.Parse()
 
+	cfg := &Config{
+		ServerAddress: setParam(envServerAddress, flagServerAddress, defaultServerAddress),
+		BaseURL:       setParam(envBaseAddress, flagBaseAddress, defaultBaseAddress),
+	}
 
 	return cfg
 }
-
-
-
