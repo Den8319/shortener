@@ -20,24 +20,25 @@ type Config struct {
 	BaseURL       string // Например: "http://localhost:8080"
 }
 
-func setParam(envName, flagName, defaultValue string) string {
+func getAddress(envName, flagValue string) string {
 
 	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
 		return envValue
 	}
 
-	flagAddress := flag.String(flagName, defaultValue, "")
-
-	return *flagAddress
+	return flagValue
 }
 
 func New() *Config {
 
+	serverAddr := flag.String(flagServerAddress, defaultServerAddress, "")
+	baseURL := flag.String(flagBaseAddress, defaultBaseAddress, "")
+
 	flag.Parse()
 
 	cfg := &Config{
-		ServerAddress: setParam(envServerAddress, flagServerAddress, defaultServerAddress),
-		BaseURL:       setParam(envBaseAddress, flagBaseAddress, defaultBaseAddress),
+		ServerAddress: getAddress(envServerAddress, *serverAddr),
+		BaseURL:       getAddress(envBaseAddress, *baseURL),
 	}
 
 	return cfg
