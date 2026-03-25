@@ -17,7 +17,7 @@ const (
 
 type Config struct {
 	ServerAddress string
-	BaseURL       string // Например: "http://localhost:8080"
+	BaseURL       string // Например:  "http://localhost:8080"
 }
 
 func getAddress(envName, flagValue string) string {
