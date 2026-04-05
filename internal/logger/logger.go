@@ -2,13 +2,12 @@ package logger
 
 import (
 	"net/http"
-	"time"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log" // импортируем глобальный логгер
 )
-
 
 type responseData struct {
 	status int
@@ -48,11 +47,11 @@ func InitLogger(levelStr string) {
 	}
 
 	// Настраиваем глобальный логгер
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr,}).Level(level).With().Timestamp().Logger()
+	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).Level(level).With().Timestamp().Logger()
 
 	// Устанавливаем как глобальный
 	zerolog.SetGlobalLevel(level)
-	zerolog.DefaultContextLogger = &logger 
+	zerolog.DefaultContextLogger = &logger
 }
 
 // WithLogging - middleware для логирования HTTP-запросов и ответов.

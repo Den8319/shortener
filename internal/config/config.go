@@ -15,7 +15,7 @@ const (
 	defaultBaseAddress = "http://localhost:8080"
 
 	envLogLevel     = "LOG_LEVEL"
-	flagLogLevel    = "l"	
+	flagLogLevel    = "l"
 	defaultLogLevel = "Info"
 )
 
@@ -50,10 +50,3 @@ func New() *Config {
 
 	return cfg
 }
-
-
-
-
-
-
-

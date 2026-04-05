@@ -9,17 +9,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	
 )
 
 func TestWithLogging(t *testing.T) {
 	// 1. Подготавливаем буфер для перехвата логов
 	buf := &bytes.Buffer{}
-	
+
 	// Сохраняем старый логгер и восстанавливаем его после теста
 	oldLogger := log.Logger
 	defer func() { log.Logger = oldLogger }()
-	
+
 	// Настраиваем глобальный логгер на запись в наш буфер (в формате JSON для парсинга)
 	log.Logger = zerolog.New(buf)
 

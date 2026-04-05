@@ -23,10 +23,10 @@ func main() {
 	// Используем middleware, который сам использует глобальный логгер
 	route.Use(logger.WithLogging)
 
-	route.Post("/", h.HandPostFullURL)
-	route.Get("/{id}", h.HandGetURL)
+	route.Post("/", h.ShortenTextHandler)
+	route.Post("/api/shorten", h.ShortenJSONHandler)
+	route.Get("/{id}", h.GetURLHandler)
 
-	
 	err := http.ListenAndServe(cfg.ServerAddress, route)
 	if err != nil {
 		panic(err)
