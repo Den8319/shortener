@@ -93,7 +93,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contentType := r.Header.Get("Content-Type")
-	if contentType != "application/json" {
+	if !strings.HasPrefix(contentType, "application/json") {
 		log.Warn().Msg("content type not allowed")
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -143,7 +143,8 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(enc)
-	log.Debug().Msg("sending HTTP 200 response")
+	log.Debug().Msg(w.Header().Get("Content-Type"))
+	log.Debug().Msg("sending HTTP 201 response")
 }
 
 
