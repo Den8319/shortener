@@ -4,6 +4,7 @@ import (
 	"github.com/Den8319/shortener/internal/config"
 	"github.com/Den8319/shortener/internal/handler"
 	"github.com/Den8319/shortener/internal/logger"
+	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/service/store"
 	"net/http"
 
@@ -22,6 +23,8 @@ func main() {
 
 	// Используем middleware, который сам использует глобальный логгер
 	route.Use(logger.WithLogging)
+	route.Use(compress.WithCompression)
+
 
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)
