@@ -39,7 +39,7 @@ func compressWriter(w http.ResponseWriter, r *http.Request) (http.ResponseWriter
 
 	// Устанавливаем заголовки для сжатого ответа
 	w.Header().Set("Content-Encoding", "gzip")
-	w.Header().Set("Vary", "Accept-Encoding")
+ 
 
 
 	compressWriter := compressResponseWriter{
@@ -55,13 +55,13 @@ func WithCompression(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Info().
 			Str("method", r.Method).
-			Str("uri", r.RequestURI).
+			Str("uri", r.URL.RequestURI()).
 			Msg("gzip middleware processing request")
 	bodyReader, err := decompressReader(r)
 		if err != nil {
 			log.Error().
 				Str("method", r.Method).
-				Str("uri", r.RequestURI).
+				Str("uri", r.URL.RequestURI()).
 				Msg("Failed to decompress request body")
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -72,17 +72,8 @@ func WithCompression(next http.Handler) http.Handler {
 		if compressed {
 			log.Info().
 				Str("method", r.Method).
-				Str("uri", r.RequestURI).
+				Str("uri", r.URL.RequestURI()).
 				Msg("Response will be compressed")
-
-			// Проверяем Content-Type после выполнения обработчика
-			contentType := w.Header().Get("Content-Type")
-			if !strings.HasPrefix(contentType, "application/json") && !strings.HasPrefix(contentType, "text/html") && !strings.HasPrefix(contentType, "text/plain") {
-				log.Info().Msg("Response Content-Type is not compressible")
-				defer gzWriter.Close()
-				next.ServeHTTP(responseWriter, r)
-				return
-			}
 
 			defer gzWriter.Close()
 			next.ServeHTTP(responseWriter, r)
@@ -90,7 +81,7 @@ func WithCompression(next http.Handler) http.Handler {
 		}
 	log.Info().
 			Str("method", r.Method).
-			Str("uri", r.RequestURI).
+			Str("uri", r.URL.RequestURI()).
 			Msg("Response will not be compressed")
 	next.ServeHTTP(w, r)
 	})

@@ -17,6 +17,13 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func newTestStore(t *testing.T) *store.FileStore {
+	t.Helper()
+	s, err := store.NewFileStore(t.TempDir() + "/store.json")
+	require.NoError(t, err)
+	return s
+}
+
 func Test_ShortenTextHandler(t *testing.T) {
 
 	// Создаем тестовые данные
@@ -24,7 +31,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 	baseUrl := "https://sberbank.ru"
 
 	// Создаем мок хранилища
-	s := store.New()
+	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
 
 	route := chi.NewRouter()
@@ -90,8 +97,6 @@ func Test_ShortenTextHandler(t *testing.T) {
 			req := httptest.NewRequest(test.method, test.path, bodyReader)
 			w := httptest.NewRecorder()
 
-			h.ShortenTextHandler(w, req)
-
 			route.ServeHTTP(w, req)
 
 			assert.Equal(t, test.want.Status, w.Code)
@@ -116,7 +121,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	baseUrl := "https://short.ru"
 
 	// Создаем мок хранилища
-	s := store.New()
+	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
 
 	route := chi.NewRouter()
@@ -222,7 +227,7 @@ for _, tt := range tests {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
-			h.ShortenJSONHandler(w, req)
+			route.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.want.status, w.Code)
 
@@ -245,7 +250,7 @@ func Test_GetURLHandler(t *testing.T) {
 	baseUrl := "https://sberbank.ru"
 
 	 
-	s := store.New()
+	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
  
 	shortURL, err := s.GetShortURL(longURL)

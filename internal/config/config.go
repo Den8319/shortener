@@ -17,12 +17,17 @@ const (
 	envLogLevel     = "LOG_LEVEL"
 	flagLogLevel    = "l"
 	defaultLogLevel = "Info"
+
+	envFileStoragePath     = "FILE_STORAGE_PATH"
+	flagFileStoragePath    = "f"
+	defaultFileStoragePath = "./short-url-db.json"
 )
 
 type Config struct {
-	ServerAddress string
-	BaseURL       string // Например:  "http://localhost:8080"
-	LogLevel      string
+	ServerAddress   string
+	BaseURL         string // Например:  "http://localhost:8080"
+	LogLevel        string
+	FileStoragePath string
 }
 
 func getParam(envName, flagValue string) string {
@@ -39,13 +44,15 @@ func New() *Config {
 	serverAddr := flag.String(flagServerAddress, defaultServerAddress, "")
 	baseURL := flag.String(flagBaseAddress, defaultBaseAddress, "")
 	logLevel := flag.String(flagLogLevel, defaultLogLevel, "")
+	filePath := flag.String(flagFileStoragePath, defaultFileStoragePath, "")
 
 	flag.Parse()
 
 	cfg := &Config{
-		ServerAddress: getParam(envServerAddress, *serverAddr),
-		BaseURL:       getParam(envBaseAddress, *baseURL),
-		LogLevel:      getParam(envLogLevel, *logLevel),
+		ServerAddress:   getParam(envServerAddress, *serverAddr),
+		BaseURL:         getParam(envBaseAddress, *baseURL),
+		LogLevel:        getParam(envLogLevel, *logLevel),
+		FileStoragePath: getParam(envFileStoragePath, *filePath),
 	}
 
 	return cfg

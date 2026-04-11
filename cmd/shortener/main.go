@@ -1,37 +1,40 @@
 package main
 
 import (
+	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/config"
 	"github.com/Den8319/shortener/internal/handler"
 	"github.com/Den8319/shortener/internal/logger"
-	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/service/store"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
+
 )
 
 func main() {
 	cfg := config.New()
 
-	// Инициализируем глобальный логгер
 	logger.InitLogger(cfg.LogLevel)
 
+	s, err := store.NewFileStore(cfg.FileStoragePath)
+	if err != nil {
+		log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
+	}
+	log.Info().Str("path", cfg.FileStoragePath).Msg("using file storage")
+
 	route := chi.NewRouter()
-	s := store.New()
 	h := handler.NewHandler(s, cfg.BaseURL)
 
-	// Используем middleware, который сам использует глобальный логгер
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
-
 
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 	route.Get("/{id}", h.GetURLHandler)
 
-	err := http.ListenAndServe(cfg.ServerAddress, route)
-	if err != nil {
-		panic(err)
+	if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
+		log.Fatal().Err(err).Msg("server stopped")
 	}
 }

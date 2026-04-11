@@ -39,19 +39,16 @@ func InitLogger(levelStr string) {
 	// Парсим уровень
 	level, err := zerolog.ParseLevel(levelStr)
 	if err != nil {
-		// Если уровень невалиден, логируем предупреждение и используем Info
 		level = zerolog.InfoLevel
-		zerolog.SetGlobalLevel(level)
-		log.Warn().Str("invalid_level", levelStr).Msg("Invalid log level provided, using info level")
-		return
 	}
 
-	// Настраиваем глобальный логгер
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).Level(level).With().Timestamp().Logger()
-
-	// Устанавливаем как глобальный
+	logger := zerolog.New(os.Stderr).Level(level).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(level)
-	zerolog.DefaultContextLogger = &logger
+	log.Logger = logger
+
+	if err != nil {
+		log.Warn().Str("invalid_level", levelStr).Msg("Invalid log level provided, using info level")
+	}
 }
 
 // WithLogging - middleware для логирования HTTP-запросов и ответов.
@@ -69,7 +66,7 @@ func WithLogging(next http.Handler) http.Handler {
 		// Логируем информацию о входящем запросе
 		log.Info().
 			Str("method", r.Method).
-			Str("uri", r.RequestURI). // Используем RequestURI, как в ТЗ
+			Str("uri", r.URL.RequestURI()).
 			Msg("incoming request")
 
 		// Передаем управление следующему обработчику

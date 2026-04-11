@@ -2,46 +2,50 @@ package store
 
 import (
 	"fmt"
-	"github.com/Den8319/shortener/pkg/generator"
 	"sync"
-)
 
-type Store struct {
-	urls map[string]string // map[shortURL]longURL
-	mu   sync.RWMutex
-}
+	"github.com/Den8319/shortener/pkg/generator"
+)
 
 const shortURLLength = 8
 
-func New() *Store {
-	return &Store{urls: make(map[string]string)}
+type Store struct {
+	urls   map[string]string
+	mu     sync.RWMutex
 }
 
-// GetShortURL возвращает существующий short для longURL или создаёт и сохраняет новый.
-func (s *Store) GetShortURL(longURL string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func New() *Store {
+	return &Store{
+		urls: make(map[string]string),	
+	}
+}
 
-	for short, storedLong := range s.urls {
-		if storedLong == longURL {
-			return short, nil
+
+func (s *Store) add(short, long string) {
+	s.urls[short] = long
+}
+
+ 
+func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err error) {
+	for sh, stored := range s.urls {
+		if stored == longURL {
+			return sh, false, nil
 		}
 	}
-
-	short, err := generator.GenerateShort(shortURLLength)
+	short, err = generator.GenerateShort(shortURLLength)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
-	s.urls[short] = longURL
-	return short, nil
+	return short, true, nil
 }
 
 func (s *Store) GetLongURL(shortURL string) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	longURL, exists := s.urls[shortURL]
-	if !exists {
+
+	long, ok := s.urls[shortURL]
+	if !ok {
 		return "", fmt.Errorf("short URL not found")
 	}
-	return longURL, nil
+	return long, nil
 }

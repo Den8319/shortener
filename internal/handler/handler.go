@@ -50,11 +50,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodPost {
-    log.Debug().Str("method", r.Method).Msg("Method not allowed")
-    w.WriteHeader(http.StatusMethodNotAllowed)
-    return
-}
 
 	longURL := strings.TrimSpace(string(body))
 	if !isValidURL(longURL) {
@@ -86,11 +81,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != http.MethodPost {
-		log.Warn().Msg("method not allowed")
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
 
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
@@ -143,7 +133,6 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(enc)
-	log.Debug().Msg(w.Header().Get("Content-Type"))
 	log.Debug().Msg("sending HTTP 201 response")
 }
 
