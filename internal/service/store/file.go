@@ -5,33 +5,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/google/uuid"
 )
 
 type record struct {
-	ShortURL string `json:"short_url"`
-	LongURL  string `json:"long_url"`
+	UUID     uuid.UUID `json:"uuid"`
+	ShortURL string    `json:"short_url"`
+	LongURL  string    `json:"long_url"`
 }
 
- 
 type FileStore struct {
 	*Store
-	filePath string
+	file    *os.File
+	encoder *json.Encoder
 }
 
- 
 func NewFileStore(filePath string) (*FileStore, error) {
-	fs := &FileStore{
-		Store:    New(),
-		filePath: filePath,
-	}
-	if err := fs.load(); err != nil {
+	store := New()
+
+	if err := loadFromFile(filePath, store); err != nil {
 		return nil, err
 	}
-	return fs, nil
+
+	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("open storage file for write: %w", err)
+	}
+
+	return &FileStore{
+		Store:   store,
+		file:    f,
+		encoder: json.NewEncoder(f),
+	}, nil
 }
- 
-func (fs *FileStore) load() error {
-	f, err := os.OpenFile(fs.filePath, os.O_RDONLY|os.O_CREATE, 0644)
+
+func loadFromFile(filePath string, s *Store) error {
+	f, err := os.OpenFile(filePath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return fmt.Errorf("open storage file: %w", err)
 	}
@@ -43,20 +53,17 @@ func (fs *FileStore) load() error {
 		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
 			return fmt.Errorf("parse record: %w", err)
 		}
-		fs.Store.add(rec.ShortURL, rec.LongURL)
+		s.add(rec.ShortURL, rec.LongURL)
 	}
 	return scanner.Err()
 }
 
-// appendRecord дописывает одну запись в конец файла.
 func (fs *FileStore) appendRecord(rec record) error {
-	f, err := os.OpenFile(fs.filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("open storage file for append: %w", err)
-	}
-	defer f.Close()
+	return fs.encoder.Encode(rec)
+}
 
-	return json.NewEncoder(f).Encode(rec)
+func (fs *FileStore) Close() error {
+	return fs.file.Close()
 }
 
 // GetShortURL возвращает короткий URL для переданного longURL.
@@ -69,7 +76,7 @@ func (fs *FileStore) GetShortURL(longURL string) (string, error) {
 		return short, err
 	}
 
-	if err := fs.appendRecord(record{ShortURL: short, LongURL: longURL}); err != nil {
+	if err := fs.appendRecord(record{UUID: uuid.New(), ShortURL: short, LongURL: longURL}); err != nil {
 		return "", err
 	}
 

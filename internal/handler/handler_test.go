@@ -1,13 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"bytes"
-	"encoding/json"
 
 	"github.com/Den8319/shortener/internal/service/store"
 
@@ -127,7 +127,6 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	route := chi.NewRouter()
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 
-
 	// Вспомогательная функция для создания JSON-тела
 	jsonBody := func(url string) *bytes.Buffer {
 		body, _ := json.Marshal(map[string]string{"url": url})
@@ -141,7 +140,6 @@ func Test_ShortenJSONHandler(t *testing.T) {
 		responseHas  string
 		headerExists string
 	}
-
 
 	tests := []struct {
 		name   string
@@ -218,7 +216,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 		},
 	}
 
-for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, tt.body)
 			w := httptest.NewRecorder()
@@ -243,16 +241,14 @@ for _, tt := range tests {
 	}
 }
 
-
 func Test_GetURLHandler(t *testing.T) {
 
 	longURL := "https://sberbank.ru"
 	baseUrl := "https://sberbank.ru"
 
-	 
 	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
- 
+
 	shortURL, err := s.GetShortURL(longURL)
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)

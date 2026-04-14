@@ -12,12 +12,12 @@ func TestNewFileStore(t *testing.T) {
 		path    string
 		wantErr bool
 	}{
-		{name: "creates new file if not exists", 
-		 path: "store.json", 
-		 wantErr: false},
-		{name: "error on inaccessible path", 
-		 path: "/nonexistent/dir/store.json", 
-		 wantErr: true},
+		{name: "creates new file if not exists",
+			path:    "store.json",
+			wantErr: false},
+		{name: "error on inaccessible path",
+			path:    "/nonexistent/dir/store.json",
+			wantErr: true},
 	}
 
 	for _, tt := range tests {

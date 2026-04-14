@@ -43,13 +43,12 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body) 
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read request body")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 
 	longURL := strings.TrimSpace(string(body))
 	if !isValidURL(longURL) {
@@ -81,7 +80,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
-
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		log.Warn().Msg("content type not allowed")
@@ -99,14 +97,14 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isValidURL(req.LongUrl) {
-		log.Warn().Str("bad_url", req.LongUrl).Msg("Invalid URL in json request")
+	if !isValidURL(req.LongURL) {
+		log.Warn().Str("bad_url", req.LongURL).Msg("Invalid URL in json request")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	shortURL, err := h.store.GetShortURL(req.LongUrl)
+	shortURL, err := h.store.GetShortURL(req.LongURL)
 	if err != nil {
-		log.Error().Err(err).Str("long_url", req.LongUrl).Msg("Failed to generate short URL")
+		log.Error().Err(err).Str("long_url", req.LongURL).Msg("Failed to generate short URL")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +117,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := model.Response{
-		ShortUrl: fullShortURL,
+		ShortURL: fullShortURL,
 	}
 
 	enc, err := json.Marshal(response)
@@ -132,10 +130,12 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write(enc)
+	if _, err := w.Write(enc); 
+		err != nil {
+		log.Error().Err(err).Msg("Failed to write response")
+	}
 	log.Debug().Msg("sending HTTP 201 response")
 }
-
 
 func isValidURL(rawURL string) bool {
 	rawURL = strings.TrimSpace(rawURL)

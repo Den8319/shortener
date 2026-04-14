@@ -27,20 +27,25 @@ func decompressReader(r *http.Request) (io.ReadCloser, error) {
 	return r.Body, nil
 }
 
-// compressWriter создает сжатый ResponseWriter, если клиент поддерживает gzip
-func compressWriter(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *gzip.Writer, bool) {
-	// Проверяем поддержку gzip клиентом
+// newCompressWriter создает сжатый ResponseWriter
+func newCompressWriter(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *gzip.Writer, bool) {
+
+	ct := r.Header.Get("Content-Type")
+
+	if !strings.Contains(ct, "application/json") && !strings.Contains(ct, "text/html") {
+		return w, nil, false
+	}
+
 	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		// если gzip не поддерживается, передаём управление
+		// дальше без изменений
 		return w, nil, false
 	}
 
 	log.Info().Msg("Compressing response")
 	gzWriter := gzip.NewWriter(w)
 
-	// Устанавливаем заголовки для сжатого ответа
 	w.Header().Set("Content-Encoding", "gzip")
- 
-
 
 	compressWriter := compressResponseWriter{
 		ResponseWriter: w,
@@ -57,7 +62,8 @@ func WithCompression(next http.Handler) http.Handler {
 			Str("method", r.Method).
 			Str("uri", r.URL.RequestURI()).
 			Msg("gzip middleware processing request")
-	bodyReader, err := decompressReader(r)
+
+		bodyReader, err := decompressReader(r)
 		if err != nil {
 			log.Error().
 				Str("method", r.Method).
@@ -66,9 +72,10 @@ func WithCompression(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-	defer bodyReader.Close()
+		defer bodyReader.Close()
 		r.Body = bodyReader
-	responseWriter, gzWriter, compressed := compressWriter(w, r)
+
+		responseWriter, gzWriter, compressed := newCompressWriter(w, r)
 		if compressed {
 			log.Info().
 				Str("method", r.Method).
@@ -79,10 +86,11 @@ func WithCompression(next http.Handler) http.Handler {
 			next.ServeHTTP(responseWriter, r)
 			return
 		}
-	log.Info().
+
+		log.Info().
 			Str("method", r.Method).
 			Str("uri", r.URL.RequestURI()).
 			Msg("Response will not be compressed")
-	next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }

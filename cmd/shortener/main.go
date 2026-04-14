@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
-
 )
 
 func main() {
@@ -22,6 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
 	}
+	defer s.Close()
 	log.Info().Str("path", cfg.FileStoragePath).Msg("using file storage")
 
 	route := chi.NewRouter()

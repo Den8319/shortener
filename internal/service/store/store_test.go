@@ -18,7 +18,7 @@ func newTestFileStore(t *testing.T) *FileStore {
 func TestGetShortURL(t *testing.T) {
 	tests := []struct {
 		name    string
-		urls    []string 
+		urls    []string
 		wantErr bool
 	}{
 		{
