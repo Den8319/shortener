@@ -11,11 +11,32 @@ import (
 
 type compressResponseWriter struct {
 	http.ResponseWriter
-	gzWriter *gzip.Writer
+	gzWriter    *gzip.Writer
+	wroteHeader bool
+	compress    bool
 }
 
-func (w compressResponseWriter) Write(b []byte) (int, error) {
-	return w.gzWriter.Write(b)
+func (w *compressResponseWriter) WriteHeader(statusCode int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	ct := w.Header().Get("Content-Type")
+	w.compress = strings.Contains(ct, "application/json") || strings.Contains(ct, "text/html")
+	if w.compress {
+		w.Header().Set("Content-Encoding", "gzip")
+	}
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *compressResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	if w.compress {
+		return w.gzWriter.Write(b)
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 // decompressReader декомпрессирует тело запроса
@@ -27,32 +48,17 @@ func decompressReader(r *http.Request) (io.ReadCloser, error) {
 	return r.Body, nil
 }
 
-// newCompressWriter создает сжатый ResponseWriter
-func newCompressWriter(w http.ResponseWriter, r *http.Request) (http.ResponseWriter, *gzip.Writer, bool) {
-
-	ct := r.Header.Get("Content-Type")
-
-	if !strings.Contains(ct, "application/json") && !strings.Contains(ct, "text/html") {
-		return w, nil, false
-	}
-
+// newCompressWriter создает сжатый ResponseWriter, если клиент поддерживает gzip
+func newCompressWriter(w http.ResponseWriter, r *http.Request) (*compressResponseWriter, *gzip.Writer, bool) {
 	if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		// если gzip не поддерживается, передаём управление
-		// дальше без изменений
-		return w, nil, false
+		return nil, nil, false
 	}
-
-	log.Info().Msg("Compressing response")
 	gzWriter := gzip.NewWriter(w)
-
-	w.Header().Set("Content-Encoding", "gzip")
-
-	compressWriter := compressResponseWriter{
+	cw := &compressResponseWriter{
 		ResponseWriter: w,
 		gzWriter:       gzWriter,
 	}
-
-	return compressWriter, gzWriter, true
+	return cw, gzWriter, true
 }
 
 // WithCompression - middleware для сжатия HTTP-ответов
@@ -75,22 +81,17 @@ func WithCompression(next http.Handler) http.Handler {
 		defer bodyReader.Close()
 		r.Body = bodyReader
 
-		responseWriter, gzWriter, compressed := newCompressWriter(w, r)
-		if compressed {
-			log.Info().
-				Str("method", r.Method).
-				Str("uri", r.URL.RequestURI()).
-				Msg("Response will be compressed")
-
-			defer gzWriter.Close()
-			next.ServeHTTP(responseWriter, r)
+		cw, gzWriter, ok := newCompressWriter(w, r)
+		if !ok {
+			next.ServeHTTP(w, r)
 			return
 		}
+		defer func() {
+			if cw.compress {
+				gzWriter.Close()
+			}
+		}()
 
-		log.Info().
-			Str("method", r.Method).
-			Str("uri", r.URL.RequestURI()).
-			Msg("Response will not be compressed")
-		next.ServeHTTP(w, r)
+		next.ServeHTTP(cw, r)
 	})
 }

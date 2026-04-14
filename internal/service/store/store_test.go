@@ -12,6 +12,7 @@ func newTestFileStore(t *testing.T) *FileStore {
 	t.Helper()
 	s, err := NewFileStore(filepath.Join(t.TempDir(), "store.json"))
 	require.NoError(t, err)
+	t.Cleanup(func() { s.Close() })
 	return s
 }
 

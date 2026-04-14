@@ -26,11 +26,12 @@ func TestNewFileStore(t *testing.T) {
 			if !tt.wantErr {
 				path = t.TempDir() + "/" + tt.path
 			}
-			_, err := NewFileStore(path)
+			s, err := NewFileStore(path)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+				t.Cleanup(func() { s.Close() })
 			}
 		})
 	}
