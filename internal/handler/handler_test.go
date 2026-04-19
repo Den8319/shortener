@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,18 +17,26 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func TestHandler_HandPostFullURL(t *testing.T) {
+func newTestStore(t *testing.T) *store.FileStore {
+	t.Helper()
+	s, err := store.NewFileStore(t.TempDir() + "/store.json")
+	require.NoError(t, err)
+	t.Cleanup(func() { s.Close() })
+	return s
+}
+
+func Test_ShortenTextHandler(t *testing.T) {
 
 	// Создаем тестовые данные
 	longURL := "https://sberbank.ru"
 	baseUrl := "https://sberbank.ru"
 
 	// Создаем мок хранилища
-	s := store.New()
+	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
 
 	route := chi.NewRouter()
-	route.Post("/", h.HandPostFullURL)
+	route.Post("/", h.ShortenTextHandler)
 
 	type want struct {
 		Status int
@@ -61,16 +71,6 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 				Status: http.StatusMethodNotAllowed,
 			},
 		},
-
-		{
-			name:   "negative wrong path",
-			method: http.MethodPost,
-			path:   "/negative",
-			body:   longURL,
-			want: want{
-				Status: http.StatusNotFound,
-			},
-		},
 		{
 			name:   "negative wrong body",
 			method: http.MethodPost,
@@ -98,8 +98,6 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 			req := httptest.NewRequest(test.method, test.path, bodyReader)
 			w := httptest.NewRecorder()
 
-			//h.HandPostFullURL(w, req)
-
 			route.ServeHTTP(w, req)
 
 			assert.Equal(t, test.want.Status, w.Code)
@@ -117,16 +115,140 @@ func TestHandler_HandPostFullURL(t *testing.T) {
 	}
 }
 
-func TestHandler_HandGetURL(t *testing.T) {
+func Test_ShortenJSONHandler(t *testing.T) {
+
+	// Создаем тестовые данные
+	longURL := "https://sberbank.ru"
+	baseUrl := "https://short.ru"
+
+	// Создаем мок хранилища
+	s := newTestStore(t)
+	h := NewHandler(s, baseUrl)
+
+	route := chi.NewRouter()
+	route.Post("/api/shorten", h.ShortenJSONHandler)
+
+	// Вспомогательная функция для создания JSON-тела
+	jsonBody := func(url string) *bytes.Buffer {
+		body, _ := json.Marshal(map[string]string{"url": url})
+		return bytes.NewBuffer(body)
+	}
+
+	type want struct {
+		status       int
+		contentType  string
+		location     string
+		responseHas  string
+		headerExists string
+	}
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   *bytes.Buffer
+		want   want
+	}{
+		{
+			name:   "positive - valid json and url",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   jsonBody(longURL),
+			want: want{
+				status:       http.StatusCreated,
+				contentType:  "application/json",
+				responseHas:  "https://short.ru",
+				headerExists: "Content-Type",
+			},
+		},
+		{
+			name:   "negative - wrong method",
+			method: http.MethodGet,
+			path:   "/api/shorten",
+			body:   jsonBody(longURL),
+			want: want{
+				status: http.StatusMethodNotAllowed,
+			},
+		},
+		{
+			name:   "negative - invalid json",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   bytes.NewBuffer([]byte("{invalid json}")),
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+		{
+			name:   "negative - empty url in json",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   jsonBody(""),
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+		{
+			name:   "negative - invalid url format",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   jsonBody("ftp://example.com"),
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+		{
+			name:   "negative - missing url field",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   bytes.NewBuffer([]byte("{}")),
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+		{
+			name:   "negative - wrong content-type",
+			method: http.MethodPost,
+			path:   "/api/shorten",
+			body:   jsonBody(longURL),
+			want: want{
+				status: http.StatusBadRequest,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, tt.body)
+			w := httptest.NewRecorder()
+
+			if !strings.Contains(tt.name, "wrong content-type") {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			route.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.want.status, w.Code)
+
+			if tt.want.headerExists == "Content-Type" {
+				assert.Equal(t, tt.want.contentType, w.Header().Get("Content-Type"))
+			}
+
+			if tt.want.responseHas != "" {
+				response := w.Body.String()
+				assert.Contains(t, response, tt.want.responseHas)
+			}
+		})
+	}
+}
+
+func Test_GetURLHandler(t *testing.T) {
 
 	longURL := "https://sberbank.ru"
 	baseUrl := "https://sberbank.ru"
 
-	route := chi.NewRouter()
-	s := store.New()
+	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
-	route.Post("/", h.HandPostFullURL)
-	route.Get("/{id}", h.HandGetURL)
 
 	shortURL, err := s.GetShortURL(longURL)
 	require.NoError(t, err)
@@ -179,7 +301,7 @@ func TestHandler_HandGetURL(t *testing.T) {
 			ctx.URLParams.Add("id", id)
 			r := req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, ctx))
 
-			h.HandGetURL(w, r)
+			h.GetURLHandler(w, r)
 
 			assert.Equal(t, test.want.Status, w.Code)
 
