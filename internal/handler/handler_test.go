@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
 
 	"github.com/stretchr/testify/assert"
@@ -17,9 +18,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func newTestStore(t *testing.T) *store.FileStore {
+func newTestStore(t *testing.T) *store.Store {
 	t.Helper()
-	s, err := store.NewFileStore(t.TempDir() + "/store.json")
+	repo, err := fileRepo.New(t.TempDir() + "/store.json")
+	require.NoError(t, err)
+	s, err := store.New(repo)
 	require.NoError(t, err)
 	t.Cleanup(func() { s.Close() })
 	return s

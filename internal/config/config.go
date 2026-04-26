@@ -21,13 +21,18 @@ const (
 	envFileStoragePath     = "FILE_STORAGE_PATH"
 	flagFileStoragePath    = "f"
 	defaultFileStoragePath = "./short-url-db.json"
+
+	envDatabaseDSN     = "DATABASE_DSN"
+	flagDatabaseDSN    = "d"
+	defaultDatabaseDSN = "user=postgres dbname=postgres sslmode=verify-full"
 )
 
 type Config struct {
 	ServerAddress   string
-	BaseURL         string // Например:  "http://localhost:8080"
+	BaseURL         string
 	LogLevel        string
 	FileStoragePath string
+	DatabaseDSN     string
 }
 
 func getParam(envName, flagValue string) string {
@@ -45,6 +50,7 @@ func New() *Config {
 	baseURL := flag.String(flagBaseAddress, defaultBaseAddress, "")
 	logLevel := flag.String(flagLogLevel, defaultLogLevel, "")
 	filePath := flag.String(flagFileStoragePath, defaultFileStoragePath, "")
+	databaseDSN := flag.String(flagDatabaseDSN, defaultDatabaseDSN, "")
 
 	flag.Parse()
 
@@ -53,6 +59,7 @@ func New() *Config {
 		BaseURL:         getParam(envBaseAddress, *baseURL),
 		LogLevel:        getParam(envLogLevel, *logLevel),
 		FileStoragePath: getParam(envFileStoragePath, *filePath),
+		DatabaseDSN:     getParam(envDatabaseDSN, *databaseDSN),
 	}
 
 	return cfg

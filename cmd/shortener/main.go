@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
+	"net/http"
+
 	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/config"
 	"github.com/Den8319/shortener/internal/handler"
 	"github.com/Den8319/shortener/internal/logger"
+	"github.com/Den8319/shortener/internal/repository/db"
+	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
-	"net/http"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -17,12 +20,21 @@ func main() {
 
 	logger.InitLogger(cfg.LogLevel)
 
-	s, err := store.NewFileStore(cfg.FileStoragePath)
+	var loader store.Loader
+	if cfg.FileStoragePath != "" {
+		fileloader, err := file.New(cfg.FileStoragePath)
+		if err != nil {
+			log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
+		}
+		loader = fileloader
+		log.Info().Str("path", cfg.FileStoragePath).Msg("using file storage")
+	}
+
+	s, err := store.New(loader)
 	if err != nil {
-		log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
+		log.Fatal().Err(err).Msg("failed to init store")
 	}
 	defer s.Close()
-	log.Info().Str("path", cfg.FileStoragePath).Msg("using file storage")
 
 	route := chi.NewRouter()
 	h := handler.NewHandler(s, cfg.BaseURL)
@@ -33,6 +45,16 @@ func main() {
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 	route.Get("/{id}", h.GetURLHandler)
+
+	database, err := db.New(context.Background(), cfg.DatabaseDSN)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to database")
+	} else {
+		defer database.Close()
+		log.Info().Msg("connected to database")
+		dbh := handler.NewDBHandler(database)
+		route.Get("/ping", dbh.HandlerGetDbPing)
+	}
 
 	if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
 		log.Fatal().Err(err).Msg("server stopped")

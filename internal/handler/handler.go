@@ -1,21 +1,28 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
-	"github.com/Den8319/shortener/internal/model"
-	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/Den8319/shortener/internal/model"
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 )
+
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
 
 type Storage interface {
 	GetShortURL(longURL string) (string, error)
 	GetLongURL(shortURL string) (string, error)
 }
 
+// Handler обрабатывает запросы на сокращение URL
 type Handler struct {
 	store   Storage
 	baseURL string
@@ -23,6 +30,24 @@ type Handler struct {
 
 func NewHandler(store Storage, baseURL string) *Handler {
 	return &Handler{store: store, baseURL: baseURL}
+}
+
+// DBHandler обрабатывает запросы к БД
+type DBHandler struct {
+	Pinger
+}
+
+func NewDBHandler(p Pinger) *DBHandler {
+	return &DBHandler{Pinger: p}
+}
+
+func (h *DBHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
+	if err := h.Ping(r.Context()); err != nil {
+		log.Error().Err(err).Msg("db ping failed")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +104,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
-
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		log.Warn().Msg("content type not allowed")
@@ -87,7 +111,6 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// десериализуем запрос в структуру модели
 	log.Debug().Msg("decoding request")
 	var req model.Request
 	dec := json.NewDecoder(r.Body)
@@ -102,6 +125,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	shortURL, err := h.store.GetShortURL(req.LongURL)
 	if err != nil {
 		log.Error().Err(err).Str("long_url", req.LongURL).Msg("Failed to generate short URL")
@@ -125,13 +149,11 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("error encoding response")
 		w.WriteHeader(http.StatusBadRequest)
 		return
-
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if _, err := w.Write(enc); 
-		err != nil {
+	if _, err := w.Write(enc); err != nil {
 		log.Error().Err(err).Msg("Failed to write response")
 	}
 	log.Debug().Msg("sending HTTP 201 response")
@@ -148,12 +170,10 @@ func isValidURL(rawURL string) bool {
 		return false
 	}
 
-	// Проверяем схему
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return false
 	}
 
-	// Хост обязателен
 	if u.Host == "" {
 		return false
 	}
