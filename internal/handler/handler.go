@@ -42,6 +42,11 @@ func NewDBHandler(p Pinger) *DBHandler {
 }
 
 func (h *DBHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
+	if h.Pinger == nil {
+		log.Warn().Msg("no pinger configured")
+		http.Error(w, "Database not configured", http.StatusServiceUnavailable)
+		return
+	}
 	if err := h.Ping(r.Context()); err != nil {
 		log.Error().Err(err).Msg("db ping failed")
 		w.WriteHeader(http.StatusInternalServerError)

@@ -2,10 +2,12 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 
+	"github.com/Den8319/shortener/internal/model"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +35,7 @@ func New(filePath string) (*Fileloader, error) {
 	}, nil
 }
 
-func (r *Fileloader) Load() (map[string]string, error) {
+func (r *Fileloader) Load(ctx context.Context) (map[string]string, error) {
 	f, err := os.OpenFile(r.filePath, os.O_RDONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("open file for read: %w", err)
@@ -52,11 +54,11 @@ func (r *Fileloader) Load() (map[string]string, error) {
 	return urls, scanner.Err()
 }
 
-func (r *Fileloader) Save(short, long string) error {
+func (r *Fileloader) Save(ctx context.Context, url *model.URL) error {
 	return r.encoder.Encode(record{
 		UUID:     uuid.New(),
-		ShortURL: short,
-		LongURL:  long,
+		ShortURL: url.ShortURL,
+		LongURL:  url.LongURL,
 	})
 }
 

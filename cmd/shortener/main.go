@@ -21,7 +21,22 @@ func main() {
 	logger.InitLogger(cfg.LogLevel)
 
 	var loader store.Loader
-	if cfg.FileStoragePath != "" {
+	var database *db.DB
+	if cfg.DatabaseDSN != "" {
+		dbInstance, err := db.New(context.Background(), cfg.DatabaseDSN)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to connect to database")
+		} else {
+			if err = dbInstance.Migrate(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("failed to migrate database")
+			}
+			loader = dbInstance
+			log.Info().Msg("using database storage")
+			database = dbInstance
+		}
+	}
+
+	if loader == nil && cfg.FileStoragePath != "" {
 		fileloader, err := file.New(cfg.FileStoragePath)
 		if err != nil {
 			log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
@@ -38,7 +53,6 @@ func main() {
 
 	route := chi.NewRouter()
 	h := handler.NewHandler(s, cfg.BaseURL)
-
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
 
@@ -46,17 +60,17 @@ func main() {
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 	route.Get("/{id}", h.GetURLHandler)
 
-	database, err := db.New(context.Background(), cfg.DatabaseDSN)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to database")
-	} else {
-		defer database.Close()
-		log.Info().Msg("connected to database")
-		dbh := handler.NewDBHandler(database)
-		route.Get("/ping", dbh.HandlerGetDbPing)
+	if cfg.DatabaseDSN != "" {
+		if database != nil {
+			dbh := handler.NewDBHandler(database)
+			route.Get("/ping", dbh.HandlerGetDbPing)
+			defer database.Close()
+			log.Info().Msg("connected to database")
+		}
 	}
 
 	if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
 		log.Fatal().Err(err).Msg("server stopped")
 	}
+
 }

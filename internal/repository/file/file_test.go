@@ -1,11 +1,13 @@
 package file_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Den8319/shortener/internal/repository/file"
+	"github.com/Den8319/shortener/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,13 +95,13 @@ func TestSaveAndLoad(t *testing.T) {
 			fl := newTestLoader(t, path)
 
 			for _, rec := range tt.records {
-				err := fl.Save(rec.short, rec.long)
+				err := fl.Save(context.Background(), &model.URL{ShortURL: rec.short, LongURL: rec.long})
 				require.NoError(t, err)
 			}
 			fl.Close()
 
 			fl2 := newTestLoader(t, path)
-			got, err := fl2.Load()
+			got, err := fl2.Load(context.Background())
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 		})
@@ -110,7 +112,7 @@ func TestLoad_CreatesFileIfNotExists(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "new-store.json")
 	fl := newTestLoader(t, path)
 
-	got, err := fl.Load()
+	got, err := fl.Load(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, got)
 

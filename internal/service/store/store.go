@@ -1,17 +1,19 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
+	"github.com/Den8319/shortener/internal/model"
 	"github.com/Den8319/shortener/pkg/generator"
 )
 
 const shortURLLength = 8
 
 type Loader interface {
-	Load() (map[string]string, error)
-	Save(short, long string) error
+	Load(ctx context.Context) (map[string]string, error)
+	Save(ctx context.Context, url *model.URL) error
 	Close() error
 }
 
@@ -28,7 +30,7 @@ func New(loader Loader) (*Store, error) {
 	}
 
 	if loader != nil {
-		urls, err := loader.Load()
+		urls, err := loader.Load(context.Background())
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +52,9 @@ func (s *Store) GetShortURL(longURL string) (string, error) {
 	s.urls[short] = longURL
 
 	if s.loader != nil {
-		s.loader.Save(short, longURL)
+		if err := s.loader.Save(context.Background(), &model.URL{ShortURL: short, LongURL: longURL}); err != nil {
+			return "", fmt.Errorf("failed to save URL: %w", err)
+		}
 	}
 
 	return short, nil
