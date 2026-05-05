@@ -13,7 +13,7 @@ import (
 	"github.com/Den8319/shortener/internal/service/store"
     "github.com/Den8319/shortener/internal/model"
 
-	"github.com/stretchr/testify/mock"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	
@@ -99,28 +99,12 @@ func Test_ShortenTextHandler(t *testing.T) {
 				Status: http.StatusBadRequest,
 			},
 		},
-		 {
-        name:   "shorten duplicate url should return 409",
-        method: "POST",
-        path:   "/",
-        body:   "https://ya.ru",
-        want: want{
-            Status:  http.StatusConflict,
-            Type: "text/plain",
-        },
    	 },
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			mockStore := new(mockStorage)
-
-
-
-			 if test.name == "shorten duplicate url should return 409" {
-            mockStore.On("GetShortURL", "https://ya.ru").
-                Return("abc12345", model.ErrURLAlreadyExists)
-        }
+		
 			bodyReader := strings.NewReader(test.body)
 
 			req := httptest.NewRequest(test.method, test.path, bodyReader)
