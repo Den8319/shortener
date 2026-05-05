@@ -11,7 +11,6 @@ import (
 
 	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
-    "github.com/Den8319/shortener/internal/model"
 
 
 	"github.com/stretchr/testify/assert"
@@ -28,11 +27,6 @@ func newTestStore(t *testing.T) *store.Store {
 	require.NoError(t, err)
 	t.Cleanup(func() { s.Close() })
 	return s
-}
-
-
-type mockStorage struct {
-	mock.Mock
 }
 
 func Test_ShortenTextHandler(t *testing.T) {
@@ -99,7 +93,6 @@ func Test_ShortenTextHandler(t *testing.T) {
 				Status: http.StatusBadRequest,
 			},
 		},
-   	 },
 	}
 
 	for _, test := range tests {
