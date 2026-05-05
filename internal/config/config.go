@@ -24,7 +24,7 @@ const (
 
 	envDatabaseDSN     = "DATABASE_DSN"
 	flagDatabaseDSN    = "d"
-	defaultDatabaseDSN = "user=postgres dbname=postgres sslmode=verify-full"
+	defaultDatabaseDSN = ""
 )
 
 type Config struct {
