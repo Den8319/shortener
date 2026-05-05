@@ -1,19 +1,20 @@
 package store
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
-	fileRepo "github.com/Den8319/shortener/internal/repository/file"
+	file "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	repo, err := fileRepo.New(filepath.Join(t.TempDir(), "store.json"))
+	fileloader, err := file.New(filepath.Join(t.TempDir(), "store.json"))
 	require.NoError(t, err)
-	s, err := New(repo)
+	s, err := New(fileloader)
 	require.NoError(t, err)
 	t.Cleanup(func() { s.Close() })
 	return s
@@ -48,7 +49,7 @@ func TestGetShortURL(t *testing.T) {
 
 			var shorts []string
 			for _, u := range tt.urls {
-				short, err := s.GetShortURL(u)
+				short, err := s.GetShortURL(context.Background(), u)
 				if tt.wantErr {
 					assert.Error(t, err)
 					return
@@ -80,7 +81,7 @@ func TestGetLongURL(t *testing.T) {
 			name:    "existing short returns long",
 			longURL: "https://example.com",
 			lookupFn: func(s *Store) string {
-				short, _ := s.GetShortURL("https://example.com")
+				short, _ := s.GetShortURL(context.Background(), "https://example.com")
 				return short
 			},
 			wantLong: "https://example.com",
@@ -101,7 +102,7 @@ func TestGetLongURL(t *testing.T) {
 			s := newTestStore(t)
 
 			short := tt.lookupFn(s)
-			long, err := s.GetLongURL(short)
+			long, err := s.GetLongURL(context.Background(), short)
 
 			if tt.wantErr {
 				assert.Error(t, err)

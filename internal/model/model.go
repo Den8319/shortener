@@ -12,3 +12,13 @@ type Request struct {
 type Response struct {
 	ShortURL string `json:"result"`
 }
+
+type BatchRequestItem struct {
+	Corr    string `json:"correlation_id"`
+	LongURL string `json:"original_url"`
+}
+
+type BatchResponseItem struct {
+	Corr     string `json:"correlation_id"`
+	ShortURL string `json:"short_url"`
+}

@@ -23,6 +23,8 @@ type Fileloader struct {
 	encoder  *json.Encoder
 }
 
+var _ model.Loader = (*Fileloader)(nil)
+
 func New(filePath string) (*Fileloader, error) {
 	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -60,6 +62,31 @@ func (r *Fileloader) Save(ctx context.Context, url *model.URL) error {
 		ShortURL: url.ShortURL,
 		LongURL:  url.LongURL,
 	})
+}
+
+func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, error) {
+	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return "", fmt.Errorf("open file for read: %w", err)
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var rec record
+		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+			continue
+		}
+		if rec.ShortURL == shortURL {
+			return rec.LongURL, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("scan file: %w", err)
+	}
+
+	return "", fmt.Errorf("url not found")
 }
 
 func (r *Fileloader) Close() error {

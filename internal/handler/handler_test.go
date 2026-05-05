@@ -110,7 +110,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 			}
 
 			if test.want.Status == http.StatusCreated {
-				shortURL, err := s.GetShortURL(longURL)
+				shortURL, err := s.GetShortURL(context.Background(), longURL)
 				assert.NoError(t, err)
 				assert.NotEmpty(t, shortURL)
 			}
@@ -253,7 +253,7 @@ func Test_GetURLHandler(t *testing.T) {
 	s := newTestStore(t)
 	h := NewHandler(s, baseUrl)
 
-	shortURL, err := s.GetShortURL(longURL)
+	shortURL, err := s.GetShortURL(context.Background(), longURL)
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)
 

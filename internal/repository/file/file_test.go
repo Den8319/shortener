@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/model"
+	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

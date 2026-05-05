@@ -11,19 +11,13 @@ import (
 
 const shortURLLength = 8
 
-type Loader interface {
-	Load(ctx context.Context) (map[string]string, error)
-	Save(ctx context.Context, url *model.URL) error
-	Close() error
-}
-
 type Store struct {
 	urls   map[string]string
 	mu     sync.RWMutex
-	loader Loader
+	loader model.Loader
 }
 
-func New(loader Loader) (*Store, error) {
+func New(loader model.Loader) (*Store, error) {
 	s := &Store{
 		urls:   make(map[string]string),
 		loader: loader,
@@ -40,7 +34,7 @@ func New(loader Loader) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) GetShortURL(longURL string) (string, error) {
+func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -60,15 +54,32 @@ func (s *Store) GetShortURL(longURL string) (string, error) {
 	return short, nil
 }
 
-func (s *Store) GetLongURL(shortURL string) (string, error) {
+func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+	// Сначала проверяем кэш в памяти
 	long, ok := s.urls[shortURL]
-	if !ok {
-		return "", fmt.Errorf("short URL not found")
+	if ok {
+		s.mu.RUnlock()
+		return long, nil
 	}
-	return long, nil
+	s.mu.RUnlock()
+
+	// Если не найдено в памяти, ищем в хранилище
+	if s.loader != nil {
+		url, err := s.loader.GetLongURL(ctx, shortURL)
+		if err != nil {
+			return "", err
+		}
+
+		// Обновляем кэш
+		s.mu.Lock()
+		s.urls[shortURL] = url
+		s.mu.Unlock()
+
+		return url, nil
+	}
+
+	return "", fmt.Errorf("short URL not found")
 }
 
 func (s *Store) Close() error {
@@ -89,4 +100,52 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 		return "", false, err
 	}
 	return short, true, nil
+}
+
+func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem) ([]model.BatchResponseItem, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var results []model.BatchResponseItem
+	var toSave []model.URL
+
+	for _, item := range items {
+		short, isNew, err := s.findOrGenerate(item.LongURL)
+		if err != nil {
+			continue
+		}
+
+		results = append(results, model.BatchResponseItem{
+			Corr:     item.Corr,
+			ShortURL: short,
+		})
+
+		if isNew {
+			toSave = append(toSave, model.URL{
+				ShortURL: short,
+				LongURL:  item.LongURL,
+			})
+		}
+	}
+
+	// Проверяем, поддерживает ли loader SaveBatch
+	if len(toSave) > 0 && s.loader != nil {
+		if batchSaver, ok := s.loader.(interface {
+			SaveBatch(context.Context, []model.URL) error
+		}); ok {
+			_ = batchSaver.SaveBatch(ctx, toSave)
+		} else {
+			// Сохраняем по одному
+			for _, url := range toSave {
+				_ = s.loader.Save(ctx, &url)
+			}
+		}
+
+		// Обновляем кэш
+		for _, url := range toSave {
+			s.urls[url.ShortURL] = url.LongURL
+		}
+	}
+
+	return results, nil
 }

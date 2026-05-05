@@ -8,6 +8,7 @@ import (
 	"github.com/Den8319/shortener/internal/config"
 	"github.com/Den8319/shortener/internal/handler"
 	"github.com/Den8319/shortener/internal/logger"
+	"github.com/Den8319/shortener/internal/model"
 	"github.com/Den8319/shortener/internal/repository/db"
 	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
@@ -20,15 +21,15 @@ func main() {
 
 	logger.InitLogger(cfg.LogLevel)
 
-	var loader store.Loader
+	var loader model.Loader
 	var database *db.DB
 	if cfg.DatabaseDSN != "" {
 		dbInstance, err := db.New(context.Background(), cfg.DatabaseDSN)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to connect to database")
 		} else {
-			if err = dbInstance.Migrate(context.Background()); err != nil {
-				log.Fatal().Err(err).Msg("failed to migrate database")
+			if err = dbInstance.Create(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("failed to сreate database")
 			}
 			loader = dbInstance
 			log.Info().Msg("using database storage")
@@ -62,8 +63,10 @@ func main() {
 
 	if cfg.DatabaseDSN != "" {
 		if database != nil {
-			dbh := handler.NewDBHandler(database)
-			route.Get("/ping", dbh.HandlerGetDbPing)
+			hp := handler.NewPingHandler(database)
+			route.Get("/ping", hp.HandlerGetDbPing)
+			dbh := handler.NewDBHandler(s, cfg.BaseURL)
+			route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)
 			defer database.Close()
 			log.Info().Msg("connected to database")
 		}
