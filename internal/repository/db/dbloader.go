@@ -1,9 +1,10 @@
 package db
 
+
 import (
 	"context"
-	"database/sql"
 	"fmt"
+	"database/sql"
 )
 
 type DB struct {
@@ -15,10 +16,12 @@ type Connector interface {
 	ExecContext(context.Context, string, ...any) (sql.Result, error)
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	
 }
 
+
 func (db *DB) Load(ctx context.Context) (map[string]string, error) {
-	if err := db.Ping(ctx); err != nil {
+if err := db.Ping(ctx); err != nil {
 		//logger
 		return nil, err
 	}
@@ -31,7 +34,7 @@ func (db *DB) Load(ctx context.Context) (map[string]string, error) {
 	return db.loadList(ctx, db.conn)
 }
 
-func (db *DB) GetShortURL(ctx context.Context, longURL string) (string, error) {
+func (db *DB) GetShortURL(ctx context.Context,  longURL string) (string, error) {
 
 	if err := db.Ping(ctx); err != nil {
 		//logger
@@ -52,29 +55,30 @@ func (db *DB) GetShortURL(ctx context.Context, longURL string) (string, error) {
 		return "", err
 	}
 
-	return short, tx.Commit()
-}
+	return short, tx.Commit()}
+
 
 func (db *DB) GetLongURL(ctx context.Context, shortURL string) (string, error) {
-	if err := db.Ping(ctx); err != nil {
-		return "", err
-	}
+    if err := db.Ping(ctx); err != nil {
+        return "", err
+    }
 
-	// Используем транзакцию для согласованности
-	tx, err := db.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
+    // Используем транзакцию для согласованности
+    tx, err := db.conn.BeginTx(ctx, nil)
+    if err != nil {
+        return "", fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback()
 
-	longURL, err := db.getLongURL(ctx, tx, shortURL)
-	if err != nil {
-		return "", err
-	}
+    longURL, err := db.getLongURL(ctx, tx, shortURL)
+    if err != nil {
+        return "", err
+    }
 
-	if err := tx.Commit(); err != nil {
-		return "", fmt.Errorf("failed to commit transaction: %w", err)
-	}
+    if err := tx.Commit(); err != nil {
+        return "", fmt.Errorf("failed to commit transaction: %w", err)
+    }
 
-	return longURL, nil
+    return longURL, nil
 }
+

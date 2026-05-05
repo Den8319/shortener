@@ -11,13 +11,15 @@ import (
 
 	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
+    "github.com/Den8319/shortener/internal/model"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	
 
 	"github.com/go-chi/chi/v5"
 )
-
 func newTestStore(t *testing.T) *store.Store {
 	t.Helper()
 	repo, err := fileRepo.New(t.TempDir() + "/store.json")
@@ -26,6 +28,11 @@ func newTestStore(t *testing.T) *store.Store {
 	require.NoError(t, err)
 	t.Cleanup(func() { s.Close() })
 	return s
+}
+
+
+type mockStorage struct {
+	mock.Mock
 }
 
 func Test_ShortenTextHandler(t *testing.T) {
@@ -92,10 +99,28 @@ func Test_ShortenTextHandler(t *testing.T) {
 				Status: http.StatusBadRequest,
 			},
 		},
+		 {
+        name:   "shorten duplicate url should return 409",
+        method: "POST",
+        path:   "/",
+        body:   "https://ya.ru",
+        want: want{
+            Status:  http.StatusConflict,
+            Type: "text/plain",
+        },
+   	 },
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			mockStore := new(mockStorage)
+
+
+
+			 if test.name == "shorten duplicate url should return 409" {
+            mockStore.On("GetShortURL", "https://ya.ru").
+                Return("abc12345", model.ErrURLAlreadyExists)
+        }
 			bodyReader := strings.NewReader(test.body)
 
 			req := httptest.NewRequest(test.method, test.path, bodyReader)

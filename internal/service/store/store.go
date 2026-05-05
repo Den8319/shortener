@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -39,14 +40,22 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error)
 	defer s.mu.Unlock()
 
 	short, isNew, err := s.findOrGenerate(longURL)
-	if err != nil || !isNew {
-		return short, err
+	if err != nil {
+		return "", err
+	}
+	if !isNew {
+		return short, nil
 	}
 
 	s.urls[short] = longURL
 
 	if s.loader != nil {
-		if err := s.loader.Save(context.Background(), &model.URL{ShortURL: short, LongURL: longURL}); err != nil {
+		url := &model.URL{ShortURL: short, LongURL: longURL}
+		if err := s.loader.Save(ctx, url); err != nil {
+		
+			if errors.Is(err, model.ErrURLAlreadyExists) {
+				return url.ShortURL, model.ErrURLAlreadyExists
+			}
 			return "", fmt.Errorf("failed to save URL: %w", err)
 		}
 	}
