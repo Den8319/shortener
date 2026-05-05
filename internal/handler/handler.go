@@ -67,6 +67,8 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
+
+	log.Info().Msg("ShortenTextHandler")
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read request body")

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/rs/zerolog/log"
 	
 )
 
@@ -140,11 +141,11 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 }
 
 func (db *DB) Save(ctx context.Context, url *model.URL) error {
-	query := `INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2) RETURNING s_short_url`;
+	query := `INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`;
 	
 	err := db.conn.QueryRowContext(ctx, query, url.ShortURL, url.LongURL).Scan(&url.ShortURL)
 	if err == sql.ErrNoRows {
- 
+		log.Error().Err(err).Msg("ErrNoRows")
 		existingShort, getErr := db.GetShort(ctx, db.conn, url.LongURL)
 		if getErr != nil {
 			return fmt.Errorf("failed to retrieve existing short URL: %w", getErr)
@@ -153,6 +154,7 @@ func (db *DB) Save(ctx context.Context, url *model.URL) error {
 		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлере
 	}
 	if err != nil {
+		log.Error().Err(err).Msg("db ping failed")
 		return fmt.Errorf("failed to save URL: %w", err)
 	}
 	return nil

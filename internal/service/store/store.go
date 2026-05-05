@@ -8,6 +8,7 @@ import (
 
 	"github.com/Den8319/shortener/internal/model"
 	"github.com/Den8319/shortener/pkg/generator"
+	"github.com/rs/zerolog/log"
 )
 
 const shortURLLength = 8
@@ -36,6 +37,7 @@ func New(loader model.Loader) (*Store, error) {
 }
 
 func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error) {
+		log.Info().Msg("GetShortURL")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -43,21 +45,23 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	if !isNew {
-		return short, nil
-	}
-
+	//if !isNew {
+	//	return short, nil
+	//}
+	log.Info().Bool("isNew:",isNew).Msg("GetShortURL")
 	s.urls[short] = longURL
-
+	
 	if s.loader != nil {
 		url := &model.URL{ShortURL: short, LongURL: longURL}
 		if err := s.loader.Save(ctx, url); err != nil {
-		
+			
 			if errors.Is(err, model.ErrURLAlreadyExists) {
+			
 				return url.ShortURL, model.ErrURLAlreadyExists
 			}
 			return "", fmt.Errorf("failed to save URL: %w", err)
 		}
+		
 	}
 
 	return short, nil
