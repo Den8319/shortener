@@ -11,7 +11,6 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/rs/zerolog/log"
-	
 )
 
 func New(ctx context.Context, dsn string) (*DB, error) {
@@ -42,12 +41,13 @@ func (db *DB) Create(ctx context.Context) error {
 
 	_, err := db.conn.ExecContext(ctx,
 		`CREATE TABLE IF NOT EXISTS t_urls (n_id SERIAL PRIMARY KEY, s_long_url VARCHAR(1000) NOT NULL, s_short_url VARCHAR(50) NOT NULL);
-		CREATE INDEX IF NOT EXISTS idx_data_full ON t_urls(s_long_url);
-		CREATE INDEX IF NOT EXISTS idx_data_short ON t_urls(s_short_url);`)
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_data_long ON t_urls(s_long_url);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_data_short ON t_urls(s_short_url);`)
 
 	if err != nil {
 		return err
 	}
+	log.Info().Msg("Table created")
 	return nil
 
 }
@@ -84,12 +84,11 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 		if err != nil {
 			return fmt.Errorf("failed to execute statement: %w", err)
 
-		
-}
 		}
+	}
 
-		if err := tx.Commit(); err != nil {
-         return fmt.Errorf("failed to commit transaction: %w", err)
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -141,8 +140,8 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 }
 
 func (db *DB) Save(ctx context.Context, url *model.URL) error {
-	query := `INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`;
-	
+	query := `INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
+
 	err := db.conn.QueryRowContext(ctx, query, url.ShortURL, url.LongURL).Scan(&url.ShortURL)
 	if err == sql.ErrNoRows {
 		log.Error().Err(err).Msg("ErrNoRows")

@@ -68,7 +68,7 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Info().Msg("ShortenTextHandler")
+	
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read request body")
@@ -82,7 +82,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	log.Info().Msg("call GetShortURL")
 	shortURL, err := h.store.GetShortURL(context.TODO(), longURL)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {

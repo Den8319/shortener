@@ -24,7 +24,7 @@ const (
 
 	envDatabaseDSN     = "DATABASE_DSN"
 	flagDatabaseDSN    = "d"
-	defaultDatabaseDSN = ""
+	defaultDatabaseDSN = "postgresql://dash:dash123@localhost:5432/dash?sslmode=disable"
 )
 
 type Config struct {
