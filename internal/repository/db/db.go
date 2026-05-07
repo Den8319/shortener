@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,19 +38,22 @@ func (db *DB) Ping(ctx context.Context) error {
 	return db.conn.PingContext(ctx)
 }
 
-func (db *DB) Create(ctx context.Context) error {
-
-	_, err := db.conn.ExecContext(ctx,
-		`CREATE TABLE IF NOT EXISTS t_urls (n_id SERIAL PRIMARY KEY, s_long_url VARCHAR(1000) NOT NULL, s_short_url VARCHAR(50) NOT NULL);
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_data_long ON t_urls(s_long_url);
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_data_short ON t_urls(s_short_url);`)
-
-	if err != nil {
-		return err
+func (db *DB) Migrate(ctx context.Context) error {
+	if err := db.Ping(ctx); err != nil {
+		return fmt.Errorf("failed to ping database before migration: %w", err)
 	}
-	log.Info().Msg("Table created")
-	return nil
 
+	goose.SetBaseFS(nil)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("failed to set dialect: %w", err)
+	}
+
+	if err := goose.Up(db.conn, "migrations"); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	log.Info().Msg("Migrations applied successfully")
+	return nil
 }
 
 func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
@@ -62,7 +66,7 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 		return err
 	}
 
-	if err := db.Create(ctx); err != nil {
+	if err := db.Migrate(ctx); err != nil {
 		//logger
 		return err
 	}
@@ -99,7 +103,7 @@ func (db *DB) loadList(ctx context.Context, conn Connector) (map[string]string, 
 		return nil, err
 	}
 
-	if err := db.Create(ctx); err != nil {
+	if err := db.Migrate(ctx); err != nil {
 		//logger
 		return nil, err
 	}

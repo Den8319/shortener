@@ -28,7 +28,7 @@ func main() {
 		if err != nil {
 			log.Error().Err(err).Msg("failed to connect to database")
 		} else {
-			if err = dbInstance.Create(context.Background()); err != nil {
+			if err = dbInstance.Migrate(context.Background()); err != nil {
 				log.Fatal().Err(err).Msg("failed to сreate database")
 			}
 			loader = dbInstance
