@@ -6,15 +6,14 @@ import (
 	"net/url"
 
 	"github.com/Den8319/shortener/internal/model"
-	"github.com/Den8319/shortener/internal/service/store"
 )
 
 type DBHandler struct {
-	store   *store.Store
+	store   model.Storage
 	baseURL string
 }
 
-func NewDBHandler(store *store.Store, baseURL string) *DBHandler {
+func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 	return &DBHandler{
 		store:   store,
 		baseURL: baseURL,

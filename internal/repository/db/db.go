@@ -72,7 +72,7 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := db.conn.PrepareContext(ctx, "INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2)")
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2)")
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
