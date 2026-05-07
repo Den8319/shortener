@@ -66,11 +66,6 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 		return err
 	}
 
-	if err := db.Migrate(ctx); err != nil {
-		//logger
-		return err
-	}
-
 	tx, err := db.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -100,11 +95,6 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 
 func (db *DB) loadList(ctx context.Context, conn Connector) (map[string]string, error) {
 	if err := db.Ping(ctx); err != nil {
-		return nil, err
-	}
-
-	if err := db.Migrate(ctx); err != nil {
-		//logger
 		return nil, err
 	}
 
