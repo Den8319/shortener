@@ -25,6 +25,10 @@ const (
 	envDatabaseDSN     = "DATABASE_DSN"
 	flagDatabaseDSN    = "d"
 	defaultDatabaseDSN = ""
+
+	envSecretKey     = "SECRET_KEY"
+	flagSecretKey    = "k"
+	defaultSecretKey = "32$5FF34"
 )
 
 type Config struct {
@@ -33,6 +37,7 @@ type Config struct {
 	LogLevel        string
 	FileStoragePath string
 	DatabaseDSN     string
+	SecretKey       string
 }
 
 func getParam(envName, flagValue string) string {
@@ -51,6 +56,7 @@ func New() *Config {
 	logLevel := flag.String(flagLogLevel, defaultLogLevel, "")
 	filePath := flag.String(flagFileStoragePath, defaultFileStoragePath, "")
 	databaseDSN := flag.String(flagDatabaseDSN, defaultDatabaseDSN, "")
+	secretKey := flag.String(flagSecretKey, defaultSecretKey, "")
 
 	flag.Parse()
 
@@ -60,6 +66,7 @@ func New() *Config {
 		LogLevel:        getParam(envLogLevel, *logLevel),
 		FileStoragePath: getParam(envFileStoragePath, *filePath),
 		DatabaseDSN:     getParam(envDatabaseDSN, *databaseDSN),
+		SecretKey:       getParam(envSecretKey, *secretKey),
 	}
 
 	return cfg

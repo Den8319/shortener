@@ -60,7 +60,6 @@ func (db *DB) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 		return "", err
 	}
 
-	// Используем транзакцию для согласованности
 	tx, err := db.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin transaction: %w", err)

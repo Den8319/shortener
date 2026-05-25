@@ -37,7 +37,7 @@ func New(loader model.Loader) (*Store, error) {
 }
 
 func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error) {
-		log.Info().Msg("GetShortURL")
+	log.Info().Msg("GetShortURL")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -45,25 +45,26 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error)
 	if err != nil {
 		return "", err
 	}
-	//if !isNew {
-	//	return short, nil
-	//}
-	log.Info().Bool("isNew:",isNew).Msg("GetShortURL")
-	s.urls[short] = longURL
+    if !isNew {
 	
+	return short, model.ErrURLAlreadyExists
+	}
+	log.Info().Bool("isNew:", isNew).Msg("GetShortURL")
+
 	if s.loader != nil {
 		url := &model.URL{ShortURL: short, LongURL: longURL}
 		if err := s.loader.Save(ctx, url); err != nil {
-			
+
 			if errors.Is(err, model.ErrURLAlreadyExists) {
-			
+
 				return url.ShortURL, model.ErrURLAlreadyExists
 			}
 			return "", fmt.Errorf("failed to save URL: %w", err)
 		}
-		
-	}
 
+	}
+	log.Info().Msgf("Saving to memory: %s -> %s", short, longURL)
+	s.urls[short] = longURL
 	return short, nil
 }
 
@@ -115,6 +116,7 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 	return short, true, nil
 }
 
+ 
 func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem) ([]model.BatchResponseItem, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -161,4 +163,11 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 	}
 
 	return results, nil
+}
+
+func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
+	if s.loader == nil {
+		return nil, fmt.Errorf("loader is not initialized")
+	}
+	return s.loader.GetUserURLs(ctx, userUUID)
 }

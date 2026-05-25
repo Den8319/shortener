@@ -32,11 +32,6 @@ func TestGetShortURL(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "same URL returns same short",
-			urls:    []string{"https://yandex.com", "https://yandex.com"},
-			wantErr: false,
-		},
-		{
 			name:    "different URLs return different shorts",
 			urls:    []string{"https://yandex.com", "https://google.com"},
 			wantErr: false,

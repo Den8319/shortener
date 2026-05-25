@@ -1,8 +1,15 @@
 package model
 
+const (
+	CookieAuth = "Auth"
+	CookieUser = "User"
+
+	ContextValueUser = "User"
+)
+
 type URL struct {
 	ShortURL string `json:"short_url"`
-	LongURL  string `json:"long_url"`
+	LongURL  string `json:"original_url"`
 }
 
 type Request struct {

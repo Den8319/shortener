@@ -56,6 +56,7 @@ func (db *DB) Migrate(ctx context.Context) error {
 	return nil
 }
 
+/*
 func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 	if len(urls) == 0 {
 		return nil
@@ -72,7 +73,7 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO t_urls (s_short_url, s_long_url) VALUES ($1, $2)")
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO t_urls (s_short_url, s_long_url,s_user) VALUES ($1, $2, $3)")
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
@@ -92,7 +93,7 @@ func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
 
 	return nil
 }
-
+*/
 func (db *DB) loadList(ctx context.Context, conn Connector) (map[string]string, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err
@@ -144,7 +145,7 @@ func (db *DB) Save(ctx context.Context, url *model.URL) error {
 			return fmt.Errorf("failed to retrieve existing short URL: %w", getErr)
 		}
 		url.ShortURL = existingShort
-		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлере
+		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлера
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("db ping failed")
@@ -169,4 +170,31 @@ func (db *DB) getLongURL(ctx context.Context, conn Connector, shortURL string) (
 
 func (db *DB) Close() error {
 	return db.conn.Close()
+}
+
+func (db *DB) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
+	if err := db.Ping(ctx); err != nil {
+		return nil, err
+	}
+
+	query := `SELECT s_short_url, s_long_url FROM t_urls WHERE u_user = $1`
+	rows, err := db.conn.QueryContext(ctx, query, userUUID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user URLs: %w", err)
+	}
+	defer rows.Close()
+
+	var urls []model.URL
+	for rows.Next() {
+		var shortURL, longURL string
+		if err := rows.Scan(&shortURL, &longURL); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		urls = append(urls, model.URL{ShortURL: shortURL, LongURL: longURL})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return urls, nil
 }

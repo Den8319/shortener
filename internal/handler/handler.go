@@ -16,18 +16,17 @@ import (
 
 // Handler обрабатывает запросы на сокращение URL
 type Handler struct {
-	store   model.Storage
-	baseURL string
+	store     model.Storage
+	baseURL   string
+	secretKey string
 }
 
 type PingHandler struct {
 	model.Pinger
 }
 
-
-
-func NewHandler(store model.Storage, baseURL string) *Handler {
-	return &Handler{store: store, baseURL: baseURL}
+func NewHandler(store model.Storage, baseURL string, secretKey string) *Handler {
+	return &Handler{store: store, baseURL: baseURL, secretKey: secretKey}
 }
 
 func NewPingHandler(p model.Pinger) *PingHandler {
@@ -47,7 +46,6 @@ func (h *PingHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
-
 
 func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -82,6 +80,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	log.Info().Msg("call GetShortURL")
 	shortURL, err := h.store.GetShortURL(context.TODO(), longURL)
 	if err != nil {
@@ -117,7 +116,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("Failed to write response")
 	}
 }
-
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
@@ -144,9 +142,10 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
-			fullShortURL, buildErr := url.JoinPath(h.baseURL, shortURL)
-			if buildErr != nil {
-				log.Error().Err(buildErr).Msg("Failed to build full short URL")
+
+			fullShortURL, err := url.JoinPath(h.baseURL, shortURL)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to build full short URL")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -200,7 +199,6 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("sending HTTP 201 response")
 }
 
-
 func isValidURL(rawURL string) bool {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -222,4 +220,3 @@ func isValidURL(rawURL string) bool {
 
 	return true
 }
- 

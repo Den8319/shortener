@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/config"
 	"github.com/Den8319/shortener/internal/handler"
@@ -20,6 +21,7 @@ func main() {
 	cfg := config.New()
 
 	logger.InitLogger(cfg.LogLevel)
+	auth.Init(cfg.SecretKey)
 
 	var loader model.Loader
 	var database *db.DB
@@ -53,13 +55,15 @@ func main() {
 	defer s.Close()
 
 	route := chi.NewRouter()
-	h := handler.NewHandler(s, cfg.BaseURL)
+	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey)
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
+	route.Use(auth.WithAuth)
 
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 	route.Get("/{id}", h.GetURLHandler)
+	route.Get("/api/user/urls", h.GetUserURLsHandler)
 
 	if cfg.DatabaseDSN != "" {
 		if database != nil {

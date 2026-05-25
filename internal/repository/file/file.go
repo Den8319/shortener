@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -15,6 +16,7 @@ type record struct {
 	UUID     uuid.UUID `json:"uuid"`
 	ShortURL string    `json:"short_url"`
 	LongURL  string    `json:"long_url"`
+	UserUUID string    `json:"user_uuid"`
 }
 
 type Fileloader struct {
@@ -61,6 +63,16 @@ func (r *Fileloader) Save(ctx context.Context, url *model.URL) error {
 		UUID:     uuid.New(),
 		ShortURL: url.ShortURL,
 		LongURL:  url.LongURL,
+		
+	})
+}
+
+func (r *Fileloader) SaveUserURL(ctx context.Context, userUUID, shortURL, longURL string) error {
+	return r.encoder.Encode(record{
+		UUID:     uuid.New(),
+		ShortURL: shortURL,
+		LongURL:  longURL,
+		UserUUID: userUUID,
 	})
 }
 
@@ -89,6 +101,61 @@ func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, e
 	return "", fmt.Errorf("url not found")
 }
 
+func (r *Fileloader) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
+	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("open file for read: %w", err)
+	}
+	defer f.Close()
+
+	var urls []model.URL
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var rec record
+		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+			continue
+		}
+		if rec.UserUUID == userUUID {
+			urls = append(urls, model.URL{ShortURL: rec.ShortURL, LongURL: rec.LongURL})
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan file: %w", err)
+	}
+
+	return urls, nil
+}
+
 func (r *Fileloader) Close() error {
 	return r.file.Close()
+}
+
+
+func (r *Fileloader) findShortByLongURL(longURL string) (string, error) {
+	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil 
+		}
+		return "", err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var rec record
+		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
+			continue
+		}
+		if rec.LongURL == longURL {
+			return rec.ShortURL, nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+
+	return "", nil 
 }

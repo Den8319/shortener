@@ -9,6 +9,7 @@ type Storage interface {
 	GetShortURL(ctx context.Context, longURL string) (string, error)
 	GetLongURL(ctx context.Context, shortURL string) (string, error)
 	GetShortList(ctx context.Context, items []BatchRequestItem) ([]BatchResponseItem, error)
+	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
 }
 
 type Pinger interface {
@@ -21,6 +22,7 @@ type Loader interface {
 	GetLongURL(ctx context.Context, shortURL string) (string, error)
 	Load(ctx context.Context) (map[string]string, error)
 	Close() error
+	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
 }
 
 // BatchSaver — опциональный интерфейс для пакетного сохранения
