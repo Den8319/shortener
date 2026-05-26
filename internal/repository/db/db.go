@@ -137,6 +137,12 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
         query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
 
+	log.Info().
+		Str("short_url", url.ShortURL).
+		Str("long_url", url.LongURL).
+		Str("user_id", userUUID).
+		Msg("saving URL to database")
+			
 	err := db.conn.QueryRowContext(ctx, query, url.ShortURL, url.LongURL, userUUID).Scan(&url.ShortURL)
 	if err == sql.ErrNoRows {
 		log.Error().Err(err).Msg("ErrNoRows")

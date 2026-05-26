@@ -45,15 +45,19 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 	if err != nil {
 		return "", err
 	}
-    if !isNew {
-	
-	return short, model.ErrURLAlreadyExists
+	if !isNew {
+
+		return short, model.ErrURLAlreadyExists
 	}
 	log.Info().Bool("isNew:", isNew).Msg("GetShortURL")
 
 	if s.loader != nil {
 		url := &model.URL{ShortURL: short, LongURL: longURL}
-		if err := s.loader.Save(ctx, url,""); err != nil {
+		log.Info().
+			Str("long_url", longURL).
+			Str("userUUID", userUUID).
+			Msg("Запись в БД")
+		if err := s.loader.Save(ctx, url, userUUID); err != nil {
 
 			if errors.Is(err, model.ErrURLAlreadyExists) {
 
@@ -116,7 +120,6 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 	return short, true, nil
 }
 
- 
 func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem) ([]model.BatchResponseItem, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -152,7 +155,7 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 		} else {
 			// Сохраняем по одному
 			for _, url := range toSave {
-				_ = s.loader.Save(ctx, &url,"")
+				_ = s.loader.Save(ctx, &url, "")
 			}
 		}
 
