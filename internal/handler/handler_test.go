@@ -8,15 +8,38 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
+	"github.com/Den8319/shortener/internal/auth"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v4"
+
 )
+
+func init() {
+        auth.Init("test-secret-key")
+}
+
+
+// createTestToken создает валидный JWT токен для тестов
+func createTestToken(t *testing.T, userID string) string {
+        t.Helper()
+        token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
+                RegisteredClaims: jwt.RegisteredClaims{
+                        ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 12)),
+                },
+                User: userID,
+        })
+        signed, err := token.SignedString([]byte("test-secret-key"))
+        require.NoError(t, err)
+        return signed
+}
 
 func newTestStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -131,6 +154,8 @@ func Test_ShortenTextHandler(t *testing.T) {
 			// Подготавливаем тело запроса
 			bodyReader := strings.NewReader(tt.body)
 			req := httptest.NewRequest(tt.method, tt.path, bodyReader)
+			token := createTestToken(t, "test-user-uuid")
+            req.Header.Set("Auth", token)
 			w := httptest.NewRecorder()
 
 			// Выполняем запрос
@@ -246,11 +271,13 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, tt.body)
-			w := httptest.NewRecorder()
-
+			
 			if !strings.Contains(tt.name, "wrong content-type") {
 				req.Header.Set("Content-Type", "application/json")
 			}
+			token := createTestToken(t, "test-user-uuid")
+                        req.Header.Set("Auth", token)
+                        w := httptest.NewRecorder()
 
 			route.ServeHTTP(w, req)
 
@@ -276,7 +303,7 @@ func Test_GetURLHandler(t *testing.T) {
 	s := newTestStore(t)
 	h := NewHandler(s, baseUrl, "test-secret-key")
 
-	shortURL, err := s.GetShortURL(context.Background(), longURL)
+	shortURL, err := s.GetShortURL(context.Background(), longURL, "test-user-uuid")
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)
 

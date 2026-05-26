@@ -36,7 +36,7 @@ func New(loader model.Loader) (*Store, error) {
 	return s, nil
 }
 
-func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error) {
+func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string) (string, error) {
 	log.Info().Msg("GetShortURL")
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -53,7 +53,7 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string) (string, error)
 
 	if s.loader != nil {
 		url := &model.URL{ShortURL: short, LongURL: longURL}
-		if err := s.loader.Save(ctx, url); err != nil {
+		if err := s.loader.Save(ctx, url,""); err != nil {
 
 			if errors.Is(err, model.ErrURLAlreadyExists) {
 
@@ -152,7 +152,7 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 		} else {
 			// Сохраняем по одному
 			for _, url := range toSave {
-				_ = s.loader.Save(ctx, &url)
+				_ = s.loader.Save(ctx, &url,"")
 			}
 		}
 

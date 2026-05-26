@@ -74,6 +74,13 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+     userUUID := getUser(w, r)
+        if userUUID == "" {
+                log.Warn().Msg("failed to get user ID")
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }
+
 	longURL := strings.TrimSpace(string(body))
 	if !isValidURL(longURL) {
 		log.Warn().Str("bad_url", longURL).Msg("Invalid URL in plain text request")
@@ -82,7 +89,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info().Msg("call GetShortURL")
-	shortURL, err := h.store.GetShortURL(context.TODO(), longURL)
+	shortURL, err := h.store.GetShortURL(context.TODO(), longURL, userUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 			fullShortURL, buildErr := url.JoinPath(h.baseURL, shortURL)
@@ -117,6 +124,15 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
+
+
+	 userUUID := getUser(w, r)
+        if userUUID == "" {
+                log.Warn().Msg("failed to get user ID")
+                w.WriteHeader(http.StatusInternalServerError)
+                return
+        }
+		
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		log.Warn().Msg("content type not allowed")
@@ -139,7 +155,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL)
+	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL, userUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 

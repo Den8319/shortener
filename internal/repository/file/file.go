@@ -58,23 +58,17 @@ func (r *Fileloader) Load(ctx context.Context) (map[string]string, error) {
 	return urls, scanner.Err()
 }
 
-func (r *Fileloader) Save(ctx context.Context, url *model.URL) error {
+func (r *Fileloader) Save(ctx context.Context, url *model.URL, userUUID string) error {
 	return r.encoder.Encode(record{
 		UUID:     uuid.New(),
 		ShortURL: url.ShortURL,
 		LongURL:  url.LongURL,
+		UserUUID: userUUID,
 		
 	})
 }
 
-func (r *Fileloader) SaveUserURL(ctx context.Context, userUUID, shortURL, longURL string) error {
-	return r.encoder.Encode(record{
-		UUID:     uuid.New(),
-		ShortURL: shortURL,
-		LongURL:  longURL,
-		UserUUID: userUUID,
-	})
-}
+ 
 
 func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)

@@ -6,7 +6,7 @@ import (
 
 // Storage — интерфейс бизнес-логики (используется в handler)
 type Storage interface {
-	GetShortURL(ctx context.Context, longURL string) (string, error)
+	GetShortURL(ctx context.Context, longURL string, userUUID string) (string, error)
 	GetLongURL(ctx context.Context, shortURL string) (string, error)
 	GetShortList(ctx context.Context, items []BatchRequestItem) ([]BatchResponseItem, error)
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
@@ -18,7 +18,7 @@ type Pinger interface {
 
 // Loader — интерфейс доступа к данным (используется в service)
 type Loader interface {
-	Save(ctx context.Context, url *URL) error
+	Save(ctx context.Context, url *URL, userUUID string) error
 	GetLongURL(ctx context.Context, shortURL string) (string, error)
 	Load(ctx context.Context) (map[string]string, error)
 	Close() error

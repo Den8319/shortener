@@ -44,7 +44,7 @@ func TestGetShortURL(t *testing.T) {
 
 			var shorts []string
 			for _, u := range tt.urls {
-				short, err := s.GetShortURL(context.Background(), u)
+				short, err := s.GetShortURL(context.Background(), u,"dfsfsdfsdfv")
 				if tt.wantErr {
 					assert.Error(t, err)
 					return
@@ -76,7 +76,7 @@ func TestGetLongURL(t *testing.T) {
 			name:    "existing short returns long",
 			longURL: "https://example.com",
 			lookupFn: func(s *Store) string {
-				short, _ := s.GetShortURL(context.Background(), "https://example.com")
+				short, _ := s.GetShortURL(context.Background(), "https://example.com","dfsfsdfsdfv")
 				return short
 			},
 			wantLong: "https://example.com",
