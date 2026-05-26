@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strings"
 	"encoding/json"
 	"github.com/Den8319/shortener/internal/auth"
 	"net/http"
@@ -31,6 +32,12 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	for i := range urls {
+    if !strings.HasPrefix(urls[i].ShortURL, "http") {
+        urls[i].ShortURL = h.baseURL + "/" + urls[i].ShortURL
+    }
+}
 
 	// Возвращаем список URL
 	w.Header().Set("Content-Type", "application/json")
