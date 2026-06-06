@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/rs/zerolog/log"
 	uuid "github.com/google/uuid"
 )
 
@@ -23,6 +24,7 @@ type Claims struct {
 }
 
 func WithAuth(h http.Handler) http.Handler {
+	log.Info().Msg("WithAuth started")
 	authFn := func(w http.ResponseWriter, r *http.Request) {
 
 		auth, err := r.Cookie("Auth")
@@ -39,6 +41,7 @@ func WithAuth(h http.Handler) http.Handler {
 		r.Header.Set("Auth", auth.Value)
 
 		user := GetUser(auth.Value)
+		log.Info().Str("user",user).Msg("WithAuth get user")
 		if user == "" {
 			newCookie(w, r)
 		} else {
@@ -94,6 +97,35 @@ func GetUser(auth string) string {
 	}); err != nil || !token.Valid {
 		return ""
 	}
-
+	log.Info().Str("claims.User",claims.User).Msg("WithAuth get user")
 	return claims.User
+}
+
+
+type tokenClaims struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	jwt.RegisteredClaims
+}
+const TokenExpire = 24 * time.Hour
+
+// GenerateToken создаёт JWT-токен для пользователя
+func GenerateToken(userID, email string) (string, error) {
+	claims := tokenClaims{
+		UserID:  userID,
+		Email:   email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpire)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Subject:   userID,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

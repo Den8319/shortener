@@ -8,8 +8,10 @@ const (
 )
 
 type URL struct {
-	ShortURL string `json:"short_url"`
-	LongURL  string `json:"original_url"`
+	ShortURL  string `json:"short_url"`
+	LongURL   string `json:"original_url"`
+	UserUUID  string `json:"user_id,omitempty"`
+	IsDeleted bool   `json:"is_deleted,omitempty"`
 }
 
 type Request struct {
@@ -29,3 +31,4 @@ type BatchResponseItem struct {
 	Corr     string `json:"correlation_id"`
 	ShortURL string `json:"short_url"`
 }
+

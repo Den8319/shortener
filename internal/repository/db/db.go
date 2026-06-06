@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/Den8319/shortener/internal/model"
 
@@ -47,8 +48,8 @@ func (db *DB) Migrate(ctx context.Context) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
-
-	if err := goose.Up(db.conn, "migrations"); err != nil {
+	migrationsPath := "../../migrations" 
+	if err := goose.Up(db.conn, migrationsPath); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -56,44 +57,7 @@ func (db *DB) Migrate(ctx context.Context) error {
 	return nil
 }
 
-/*
-func (db *DB) SaveBatch(ctx context.Context, urls []*model.URL) error {
-	if len(urls) == 0 {
-		return nil
-	}
-
-	if err := db.Ping(ctx); err != nil {
-		//logger
-		return err
-	}
-
-	tx, err := db.conn.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO t_urls (s_short_url, s_long_url,s_user) VALUES ($1, $2, $3)")
-	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
-
-	for _, url := range urls {
-		_, err := stmt.ExecContext(ctx, url.ShortURL, url.LongURL)
-		if err != nil {
-			return fmt.Errorf("failed to execute statement: %w", err)
-
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-*/
+ 
 func (db *DB) loadList(ctx context.Context, conn Connector) (map[string]string, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err
@@ -135,14 +99,14 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 }
 
 func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
-        query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
+	query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
 
 	log.Info().
 		Str("short_url", url.ShortURL).
 		Str("long_url", url.LongURL).
 		Str("user_id", userUUID).
 		Msg("saving URL to database")
-			
+
 	err := db.conn.QueryRowContext(ctx, query, url.ShortURL, url.LongURL, userUUID).Scan(&url.ShortURL)
 	if err == sql.ErrNoRows {
 		log.Error().Err(err).Msg("ErrNoRows")
@@ -151,7 +115,7 @@ func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
 			return fmt.Errorf("failed to retrieve existing short URL: %w", getErr)
 		}
 		url.ShortURL = existingShort
-		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлера
+		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлерах
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("db ping failed")
@@ -160,16 +124,20 @@ func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
 	return nil
 }
 
-func (db *DB) getLongURL(ctx context.Context, conn Connector, shortURL string) (string, error) {
-	const query = `SELECT s_long_url FROM t_urls WHERE s_short_url = $1`
+func (db *DB) GetLong(ctx context.Context, conn Connector, shortURL string) (string, error) {
+	const query = `SELECT s_long_url, b_deleted FROM t_urls WHERE s_short_url = $1`
 	var longURL string
+	var isDeleted bool
 
-	err := conn.QueryRowContext(ctx, query, shortURL).Scan(&longURL)
+	err := conn.QueryRowContext(ctx, query, shortURL).Scan(&longURL, &isDeleted)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", fmt.Errorf("url not found")
 		}
 		return "", fmt.Errorf("scan row: %w", err)
+	}
+	if isDeleted {
+		return "", model.ErrURLDeleted
 	}
 	return longURL, nil
 }
@@ -203,4 +171,39 @@ func (db *DB) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, er
 	}
 
 	return urls, nil
+}
+
+func (db *DB) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
+
+	log.Info().Int("count", len(shortURLs)).Str("user_id", userUUID).Msg("starting soft delete batch")
+
+	if len(shortURLs) == 0 {
+		return nil
+	}
+
+
+	// Формируем список идентификаторов для IN-запроса
+	placeholders := make([]string, len(shortURLs))
+	args := make([]any, len(shortURLs)+1)
+	for i, s := range shortURLs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = s
+	}
+	args[len(shortURLs)] = userUUID
+
+	query := fmt.Sprintf(`UPDATE t_urls SET b_deleted = true WHERE s_short_url IN (%s) AND u_user = $%d`,
+		strings.Join(placeholders, ","), len(shortURLs)+1)
+
+	result, err := db.conn.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to execute delete query: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	log.Info().Int("deleted", int(rowsAffected)).Msg("Soft delete batch completed")
+	return nil
 }

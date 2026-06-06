@@ -8,8 +8,9 @@ import (
 type Storage interface {
 	GetShortURL(ctx context.Context, longURL string, userUUID string) (string, error)
 	GetLongURL(ctx context.Context, shortURL string) (string, error)
-	GetShortList(ctx context.Context, items []BatchRequestItem) ([]BatchResponseItem, error)
+	GetShortList(ctx context.Context, items []BatchRequestItem, userUUID string) ([]BatchResponseItem, error)
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
+	DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error
 }
 
 type Pinger interface {
@@ -23,9 +24,5 @@ type Loader interface {
 	Load(ctx context.Context) (map[string]string, error)
 	Close() error
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
-}
-
-// BatchSaver — опциональный интерфейс для пакетного сохранения
-type BatchSaver interface {
-	SaveBatch(ctx context.Context, urls []URL) error
+	Delete(ctx context.Context, shortURLs []string, userUUID string) error
 }

@@ -22,21 +22,20 @@ func main() {
 
 	logger.InitLogger(cfg.LogLevel)
 	auth.Init(cfg.SecretKey)
-
+	
 	var loader model.Loader
 	var database *db.DB
 	if cfg.DatabaseDSN != "" {
 		dbInstance, err := db.New(context.Background(), cfg.DatabaseDSN)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to connect to database")
-		} else {
-			if err = dbInstance.Migrate(context.Background()); err != nil {
-				log.Fatal().Err(err).Msg("failed to сreate database")
-			}
-			loader = dbInstance
-			log.Info().Msg("using database storage")
-			database = dbInstance
+			log.Fatal().Err(err).Msg("failed to connect to database")
 		}
+		if err = dbInstance.Migrate(context.Background()); err != nil {
+			log.Fatal().Err(err).Msg("failed to migrate database")
+		}
+		loader = dbInstance
+		log.Info().Msg("using database storage")
+		database = dbInstance
 	}
 
 	if loader == nil && cfg.FileStoragePath != "" {
@@ -54,8 +53,15 @@ func main() {
 	}
 	defer s.Close()
 
-	route := chi.NewRouter()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Запуск worker'ов для асинхронного удаления URL
+	s.StartDeleter(ctx, 4)
+
 	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey)
+
+	route := chi.NewRouter()
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
 	route.Use(auth.WithAuth)
@@ -64,6 +70,7 @@ func main() {
 	route.Post("/api/shorten", h.ShortenJSONHandler)
 	route.Get("/{id}", h.GetURLHandler)
 	route.Get("/api/user/urls", h.GetUserURLsHandler)
+	route.Delete("/api/user/urls", h.DeleteURLsHandler)
 
 	if cfg.DatabaseDSN != "" {
 		if database != nil {
@@ -79,5 +86,4 @@ func main() {
 	if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
 		log.Fatal().Err(err).Msg("server stopped")
 	}
-
 }

@@ -56,6 +56,10 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	longURL, err := h.store.GetLongURL(context.TODO(), id)
 	if err != nil {
+		if errors.Is(err, model.ErrURLDeleted) {
+			w.WriteHeader(http.StatusGone)
+			return
+		}
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -66,7 +70,6 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 
-	
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to read request body")
@@ -74,12 +77,13 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-     userUUID := getUser(w, r)
-        if userUUID == "" {
-                log.Warn().Msg("failed to get user ID")
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-        }
+	userUUID := getUser(r)
+	log.Info().Msg(userUUID)
+	if userUUID == "" {
+		log.Warn().Msg("failed to get user ID")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	longURL := strings.TrimSpace(string(body))
 	if !isValidURL(longURL) {
@@ -123,16 +127,17 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("Failed to write response")
 	}
 }
+
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
+	userUUID := getUser(r)
+	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	if userUUID == "" {
+		log.Warn().Msg("failed to get user ID")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	 userUUID := getUser(w, r)
-        if userUUID == "" {
-                log.Warn().Msg("failed to get user ID")
-                w.WriteHeader(http.StatusInternalServerError)
-                return
-        }
-		
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
 		log.Warn().Msg("content type not allowed")

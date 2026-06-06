@@ -13,10 +13,11 @@ import (
 )
 
 type record struct {
-	UUID     uuid.UUID `json:"uuid"`
-	ShortURL string    `json:"short_url"`
-	LongURL  string    `json:"long_url"`
-	UserUUID string    `json:"user_uuid"`
+	UUID      uuid.UUID `json:"uuid"`
+	ShortURL  string    `json:"short_url"`
+	LongURL   string    `json:"long_url"`
+	UserUUID  string    `json:"user_uuid"`
+	IsDeleted bool      `json:"is_deleted"`
 }
 
 type Fileloader struct {
@@ -53,22 +54,22 @@ func (r *Fileloader) Load(ctx context.Context) (map[string]string, error) {
 		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
 			return nil, fmt.Errorf("parse record: %w", err)
 		}
-		urls[rec.ShortURL] = rec.LongURL
+		if !rec.IsDeleted {
+			urls[rec.ShortURL] = rec.LongURL
+		}
 	}
 	return urls, scanner.Err()
 }
 
 func (r *Fileloader) Save(ctx context.Context, url *model.URL, userUUID string) error {
 	return r.encoder.Encode(record{
-		UUID:     uuid.New(),
-		ShortURL: url.ShortURL,
-		LongURL:  url.LongURL,
-		UserUUID: userUUID,
-		
+		UUID:      uuid.New(),
+		ShortURL:  url.ShortURL,
+		LongURL:   url.LongURL,
+		UserUUID:  userUUID,
+		IsDeleted: false,
 	})
 }
-
- 
 
 func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
@@ -84,6 +85,9 @@ func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, e
 			continue
 		}
 		if rec.ShortURL == shortURL {
+			if rec.IsDeleted {
+				return "", model.ErrURLDeleted
+			}
 			return rec.LongURL, nil
 		}
 	}
@@ -109,7 +113,7 @@ func (r *Fileloader) GetUserURLs(ctx context.Context, userUUID string) ([]model.
 		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
 			continue
 		}
-		if rec.UserUUID == userUUID {
+		if rec.UserUUID == userUUID && !rec.IsDeleted {
 			urls = append(urls, model.URL{ShortURL: rec.ShortURL, LongURL: rec.LongURL})
 		}
 	}
@@ -125,12 +129,16 @@ func (r *Fileloader) Close() error {
 	return r.file.Close()
 }
 
+func (r *Fileloader) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
+	 
+	return 	errors.New("unsupport")
+}
 
 func (r *Fileloader) findShortByLongURL(longURL string) (string, error) {
 	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return "", nil 
+			return "", nil
 		}
 		return "", err
 	}
@@ -151,5 +159,5 @@ func (r *Fileloader) findShortByLongURL(longURL string) (string, error) {
 		return "", err
 	}
 
-	return "", nil 
+	return "", nil
 }

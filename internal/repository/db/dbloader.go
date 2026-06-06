@@ -66,7 +66,7 @@ func (db *DB) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	}
 	defer tx.Rollback()
 
-	longURL, err := db.getLongURL(ctx, tx, shortURL)
+	longURL, err := db.GetLong(ctx, tx, shortURL)
 	if err != nil {
 		return "", err
 	}

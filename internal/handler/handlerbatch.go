@@ -6,6 +6,7 @@ import (
 	"net/url"
 
 	"github.com/Den8319/shortener/internal/model"
+	"github.com/rs/zerolog/log"
 )
 
 type DBHandler struct {
@@ -22,6 +23,15 @@ func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 
 func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) {
 	// Тело запроса уже распаковано middleware
+
+	userUUID := getUser(r)
+	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	if userUUID == "" {
+		log.Warn().Msg("failed to get user ID")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	var req []model.BatchRequestItem
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
@@ -40,7 +50,7 @@ func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	results, err := h.store.GetShortList(r.Context(), req)
+	results, err := h.store.GetShortList(r.Context(), req, userUUID)
 	if err != nil {
 		http.Error(w, "Failed to process batch", http.StatusInternalServerError)
 		return

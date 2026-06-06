@@ -13,10 +13,18 @@ import (
 
 const shortURLLength = 8
 
+type DeleteRequest struct {
+	Context   context.Context
+	ShortURLs []string
+	UserID    string
+}
+
 type Store struct {
-	urls   map[string]string
-	mu     sync.RWMutex
-	loader model.Loader
+	urls          map[string]string
+	mu            sync.RWMutex
+	loader        model.Loader
+	DeleteQueue   chan DeleteRequest
+	deleteWorkers int
 }
 
 func New(loader model.Loader) (*Store, error) {
@@ -46,7 +54,6 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 		return "", err
 	}
 	if !isNew {
-
 		return short, model.ErrURLAlreadyExists
 	}
 	log.Info().Bool("isNew:", isNew).Msg("GetShortURL")
@@ -58,14 +65,11 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 			Str("userUUID", userUUID).
 			Msg("Запись в БД")
 		if err := s.loader.Save(ctx, url, userUUID); err != nil {
-
 			if errors.Is(err, model.ErrURLAlreadyExists) {
-
 				return url.ShortURL, model.ErrURLAlreadyExists
 			}
 			return "", fmt.Errorf("failed to save URL: %w", err)
 		}
-
 	}
 	log.Info().Msgf("Saving to memory: %s -> %s", short, longURL)
 	s.urls[short] = longURL
@@ -74,7 +78,6 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 
 func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	s.mu.RLock()
-	// Сначала проверяем кэш в памяти
 	long, ok := s.urls[shortURL]
 	if ok {
 		s.mu.RUnlock()
@@ -82,14 +85,15 @@ func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error)
 	}
 	s.mu.RUnlock()
 
-	// Если не найдено в памяти, ищем в хранилище
 	if s.loader != nil {
 		url, err := s.loader.GetLongURL(ctx, shortURL)
 		if err != nil {
+			if errors.Is(err, model.ErrURLDeleted) {
+				return "", err
+			}
 			return "", err
 		}
 
-		// Обновляем кэш
 		s.mu.Lock()
 		s.urls[shortURL] = url
 		s.mu.Unlock()
@@ -120,7 +124,7 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 	return short, true, nil
 }
 
-func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem) ([]model.BatchResponseItem, error) {
+func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem, userUUID string ) ([]model.BatchResponseItem, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -146,24 +150,14 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 		}
 	}
 
-	// Проверяем, поддерживает ли loader SaveBatch
-	if len(toSave) > 0 && s.loader != nil {
-		if batchSaver, ok := s.loader.(interface {
-			SaveBatch(context.Context, []model.URL) error
-		}); ok {
-			_ = batchSaver.SaveBatch(ctx, toSave)
-		} else {
-			// Сохраняем по одному
-			for _, url := range toSave {
-				_ = s.loader.Save(ctx, &url, "")
+		for _, url := range toSave {
+				_ = s.loader.Save(ctx, &url, userUUID)
 			}
-		}
-
-		// Обновляем кэш
+		
 		for _, url := range toSave {
 			s.urls[url.ShortURL] = url.LongURL
 		}
-	}
+	
 
 	return results, nil
 }
@@ -173,4 +167,52 @@ func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, 
 		return nil, fmt.Errorf("loader is not initialized")
 	}
 	return s.loader.GetUserURLs(ctx, userUUID)
+}
+
+func (s *Store) StartDeleter(ctx context.Context, workers int) {
+	s.deleteWorkers = workers
+	s.DeleteQueue = make(chan DeleteRequest, workers*2)
+
+	for i := 0; i < workers; i++ {
+		go s.deleteWorker(ctx)
+	}
+	log.Info().Int("workers", workers).Msg("started delete workers")
+}
+
+func (s *Store) deleteWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("delete worker shutting down")
+			return
+		case req := <-s.DeleteQueue:
+			s.processDeleteRequest(req)
+		}
+	}
+}
+
+func (s *Store) processDeleteRequest(req DeleteRequest) {
+	err := s.loader.Delete(context.Background(), req.ShortURLs, req.UserID)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", req.UserID).Msg("failed to delete URLs")
+	}
+}
+
+func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
+	if s.DeleteQueue == nil {
+		return fmt.Errorf("delete queue is not initialized, call StartDeleter first")
+	}
+
+	req := DeleteRequest{
+		Context:   ctx,
+		ShortURLs: shortURLs,
+		UserID:    userUUID,
+	}
+
+	select {
+	case s.DeleteQueue <- req:
+		return nil
+	default:
+		return fmt.Errorf("delete queue is full")
+	}
 }
