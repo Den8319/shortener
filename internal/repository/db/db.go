@@ -48,8 +48,8 @@ func (db *DB) Migrate(ctx context.Context) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
-	migrationsPath := "../../migrations" 
-	if err := goose.Up(db.conn, migrationsPath); err != nil {
+ 
+	if err := goose.Up(db.conn, "migrations"); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
