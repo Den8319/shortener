@@ -37,6 +37,7 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	
 		
 	fullURLs := make([]model.URL, len(urls))
 	for i, u := range urls {
@@ -91,9 +92,10 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(r *http.Request) string {
-	
-	if userCookie, err := r.Cookie("User"); 
-	err == nil {return userCookie.Value}
+	userCookie, err := r.Cookie("User")
+	if err == nil {
+		return userCookie.Value
+	}
 	
 	token := r.Header.Get("Auth")
 	return auth.GetUser(token)

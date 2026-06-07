@@ -124,7 +124,7 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 	return short, true, nil
 }
 
-func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem, userUUID string ) ([]model.BatchResponseItem, error) {
+func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem, userUUID string) ([]model.BatchResponseItem, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -150,14 +150,13 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 		}
 	}
 
-		for _, url := range toSave {
-				_ = s.loader.Save(ctx, &url, userUUID)
-			}
-		
-		for _, url := range toSave {
-			s.urls[url.ShortURL] = url.LongURL
-		}
-	
+	for _, url := range toSave {
+		_ = s.loader.Save(ctx, &url, userUUID)
+	}
+
+	for _, url := range toSave {
+		s.urls[url.ShortURL] = url.LongURL
+	}
 
 	return results, nil
 }
@@ -204,6 +203,7 @@ func (s *Store) processDeleteRequest(req DeleteRequest) {
 	}
 	s.mu.Unlock()
 }
+
 func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
 	if s.DeleteQueue == nil {
 		return fmt.Errorf("delete queue is not initialized, call StartDeleter first")
@@ -215,10 +215,6 @@ func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID str
 		UserID:    userUUID,
 	}
 
-	select {
-	case s.DeleteQueue <- req:
-		return nil
-	default:
-		return fmt.Errorf("delete queue is full")
-	}
+	s.DeleteQueue <- req
+	return nil
 }
