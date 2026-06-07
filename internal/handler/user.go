@@ -49,7 +49,7 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	// Возвращаем список URL
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(urls); err != nil {
+	if err := json.NewEncoder(w).Encode(fullURLs); err != nil {
 		log.Error().Err(err).Msg("failed to encode response")
 	}
 }
