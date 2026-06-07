@@ -3,13 +3,18 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"fmt"
 
 	"github.com/Den8319/shortener/internal/auth"
+	"github.com/Den8319/shortener/internal/model"
 	"github.com/rs/zerolog/log"
 )
 
+
+
 // GetUserURLsHandler возвращает все сокращённые пользователем URL
 func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Debug().Msg("GetUserURLsHandler")
 	// Получаем или создаем идентификатор пользователя
 	userID := getUser(r)
 	if userID == "" {
@@ -30,6 +35,15 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	if len(urls) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
+	}
+
+		
+	fullURLs := make([]model.URL, len(urls))
+	for i, u := range urls {
+		fullURLs[i] = model.URL{
+			ShortURL: fmt.Sprintf("%s/%s", h.baseURL, u.ShortURL),
+			LongURL:  u.LongURL,
+		}
 	}
 
 	// Возвращаем список URL
