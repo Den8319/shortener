@@ -194,10 +194,16 @@ func (s *Store) deleteWorker(ctx context.Context) {
 func (s *Store) processDeleteRequest(req DeleteRequest) {
 	err := s.loader.Delete(context.Background(), req.ShortURLs, req.UserID)
 	if err != nil {
-		log.Error().Err(err).Str("user_id", req.UserID).Msg("failed to delete URLs")
+		log.Error().Err(err).Str("user_id", req.UserID).Msg("не удалось удалить URL")
+		return
 	}
-}
 
+	s.mu.Lock()
+	for _, shortURL := range req.ShortURLs {
+		delete(s.urls, shortURL)
+	}
+	s.mu.Unlock()
+}
 func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
 	if s.DeleteQueue == nil {
 		return fmt.Errorf("delete queue is not initialized, call StartDeleter first")

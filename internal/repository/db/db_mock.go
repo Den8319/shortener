@@ -50,7 +50,7 @@ func (m *MockDB) Load(ctx context.Context) (map[string]string, error) {
 }
 
 // SoftDeleteBatch marks URLs as deleted for the specified user
-func (m *MockDB) SoftDeleteBatch(ctx context.Context, shortURLs []string, userUUID string) error {
+func (m *MockDB) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
 	for _, shortURL := range shortURLs {
 		if url, exists := m.storage[shortURL]; exists {
 			if url.UserUUID == userUUID {
@@ -66,7 +66,7 @@ func (m *MockDB) SoftDeleteBatch(ctx context.Context, shortURLs []string, userUU
 
 // DeleteURLs is a wrapper for SoftDeleteBatch (for backward compatibility)
 func (m *MockDB) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
-	return m.SoftDeleteBatch(ctx, shortURLs, userUUID)
+	return m.Delete(ctx, shortURLs, userUUID)
 }
 
 // Close implements the Loader interface (no-op for mock)
