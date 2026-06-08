@@ -77,13 +77,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userUUID := getUser(r)
-	log.Info().Msg(userUUID)
-	if userUUID == "" {
-		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 
 	longURL := strings.TrimSpace(string(body))
 	if !isValidURL(longURL) {
@@ -93,7 +86,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Info().Msg("call GetShortURL")
-	shortURL, err := h.store.GetShortURL(context.TODO(), longURL, userUUID)
+	shortURL, err := h.store.GetShortURL(context.TODO(), longURL, "")
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 			fullShortURL, buildErr := url.JoinPath(h.baseURL, shortURL)
