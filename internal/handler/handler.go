@@ -123,13 +123,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
-	userUUID := getUser(r)
-	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
-	if userUUID == "" {
-		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
+	
 
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
@@ -153,7 +147,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL, userUUID)
+	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL, "")
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 
