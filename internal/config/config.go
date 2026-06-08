@@ -28,7 +28,7 @@ const (
 
 	envSecretKey     = "SECRET_KEY"
 	flagSecretKey    = "k"
-	defaultSecretKey = "32$5FF34"
+	defaultSecretKey = ""
 )
 
 type Config struct {

@@ -19,26 +19,24 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
-
 )
 
 func init() {
-        auth.Init("test-secret-key")
+	auth.Init("test-secret-key")
 }
-
 
 // createTestToken создает валидный JWT токен для тестов
 func createTestToken(t *testing.T, userID string) string {
-        t.Helper()
-        token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
-                RegisteredClaims: jwt.RegisteredClaims{
-                        ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 12)),
-                },
-                User: userID,
-        })
-        signed, err := token.SignedString([]byte("test-secret-key"))
-        require.NoError(t, err)
-        return signed
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 12)),
+		},
+		User: userID,
+	})
+	signed, err := token.SignedString([]byte("test-secret-key"))
+	require.NoError(t, err)
+	return signed
 }
 
 func newTestStore(t *testing.T) *store.Store {
@@ -68,14 +66,14 @@ func Test_ShortenTextHandler(t *testing.T) {
 	route := chi.NewRouter()
 	route.Post("/", h.ShortenTextHandler)
 
-	type want  struct {
+	type want struct {
 		Status int
 		Header string
 		Type   string
 	}
-	
+
 	// Вспомогательная функция для проверки ответа
-	checkResponse := func(t *testing.T, w *httptest.ResponseRecorder, want want ) {
+	checkResponse := func(t *testing.T, w *httptest.ResponseRecorder, want want) {
 		t.Helper()
 		assert.Equal(t, want.Status, w.Code, "ожидаемый статус код не совпадает")
 
@@ -84,12 +82,11 @@ func Test_ShortenTextHandler(t *testing.T) {
 		}
 
 		if want.Status == http.StatusCreated {
-    		response := strings.TrimSpace(w.Body.String())
-    		assert.NotEmpty(t, response, "тело ответа не должно быть пустым")
-    		assert.True(t, strings.HasPrefix(response, baseURL), "ответ должен быть полным коротким URL")
+			response := strings.TrimSpace(w.Body.String())
+			assert.NotEmpty(t, response, "тело ответа не должно быть пустым")
+			assert.True(t, strings.HasPrefix(response, baseURL), "ответ должен быть полным коротким URL")
 		}
 	}
-
 
 	tests := []struct {
 		name   string
@@ -155,7 +152,10 @@ func Test_ShortenTextHandler(t *testing.T) {
 			bodyReader := strings.NewReader(tt.body)
 			req := httptest.NewRequest(tt.method, tt.path, bodyReader)
 			token := createTestToken(t, "test-user-uuid")
-            req.Header.Set("Auth", token)
+			req.AddCookie(&http.Cookie{
+				Name:  "Auth",
+				Value: token,
+			})
 			w := httptest.NewRecorder()
 
 			// Выполняем запрос
@@ -166,6 +166,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 		})
 	}
 }
+
 func Test_ShortenJSONHandler(t *testing.T) {
 
 	// Создаем тестовые данные
@@ -271,13 +272,16 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, tt.body)
-			
+
 			if !strings.Contains(tt.name, "wrong content-type") {
 				req.Header.Set("Content-Type", "application/json")
 			}
 			token := createTestToken(t, "test-user-uuid")
-                        req.Header.Set("Auth", token)
-                        w := httptest.NewRecorder()
+			req.AddCookie(&http.Cookie{
+				Name:  "Auth",
+				Value: token,
+			})
+			w := httptest.NewRecorder()
 
 			route.ServeHTTP(w, req)
 

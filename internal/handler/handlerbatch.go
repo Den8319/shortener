@@ -28,7 +28,7 @@ func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) 
 	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
 	if userUUID == "" {
 		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 

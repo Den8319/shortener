@@ -81,7 +81,7 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Msg(userUUID)
 	if userUUID == "" {
 		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
 	if userUUID == "" {
 		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 

@@ -133,31 +133,4 @@ func (r *Fileloader) Delete(ctx context.Context, shortURLs []string, userUUID st
 	 
 	return 	errors.New("unsupport")
 }
-
-func (r *Fileloader) findShortByLongURL(longURL string) (string, error) {
-	f, err := os.OpenFile(r.filePath, os.O_RDONLY, 0644)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", nil
-		}
-		return "", err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		var rec record
-		if err := json.Unmarshal(scanner.Bytes(), &rec); err != nil {
-			continue
-		}
-		if rec.LongURL == longURL {
-			return rec.ShortURL, nil
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-
-	return "", nil
-}
+ 

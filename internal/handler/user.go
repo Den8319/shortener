@@ -10,8 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-
-
 // GetUserURLsHandler возвращает все сокращённые пользователем URL
 func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("GetUserURLsHandler")
@@ -19,7 +17,7 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	userID := getUser(r)
 	if userID == "" {
 		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -37,8 +35,6 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
-		
 	fullURLs := make([]model.URL, len(urls))
 	for i, u := range urls {
 		fullURLs[i] = model.URL{
@@ -61,7 +57,7 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 	userID := getUser(r)
 	if userID == "" {
 		log.Warn().Msg("failed to get user ID")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
@@ -92,11 +88,11 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(r *http.Request) string {
-	userCookie, err := r.Cookie("User")
-	if err == nil {
-		return userCookie.Value
+	
+	authCookie, err := r.Cookie("Auth")
+	if err != nil {
+		return ""
 	}
 	
-	token := r.Header.Get("Auth")
-	return auth.GetUser(token)
+	return auth.GetUser(authCookie.Value)
 }

@@ -41,7 +41,7 @@ func WithAuth(h http.Handler) http.Handler {
 		r.Header.Set("Auth", auth.Value)
 
 		user := GetUser(auth.Value)
-		log.Info().Str("user",user).Msg("WithAuth get user")
+		log.Info().Str("user", user).Msg("WithAuth get user")
 		if user == "" {
 			newCookie(w, r)
 		} else {
@@ -97,28 +97,21 @@ func GetUser(auth string) string {
 	}); err != nil || !token.Valid {
 		return ""
 	}
-	log.Info().Str("claims.User",claims.User).Msg("WithAuth get user")
+	log.Info().Str("claims.User", claims.User).Msg("WithAuth get user")
 	return claims.User
 }
 
-
-type tokenClaims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	jwt.RegisteredClaims
-}
 const TokenExpire = 24 * time.Hour
 
 // GenerateToken создаёт JWT-токен для пользователя
 func GenerateToken(userID, email string) (string, error) {
-	claims := tokenClaims{
-		UserID:  userID,
-		Email:   email,
+	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpire)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Subject:   userID,
 		},
+		User: userID,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
