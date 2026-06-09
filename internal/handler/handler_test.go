@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Den8319/shortener/internal/auth"
 	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
-	"github.com/Den8319/shortener/internal/auth"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,6 +152,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 			bodyReader := strings.NewReader(tt.body)
 			req := httptest.NewRequest(tt.method, tt.path, bodyReader)
 			token := createTestToken(t, "test-user-uuid")
+			req.Header.Set("Auth", token)
 			req.AddCookie(&http.Cookie{
 				Name:  "Auth",
 				Value: token,
@@ -277,6 +278,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 			}
 			token := createTestToken(t, "test-user-uuid")
+			req.Header.Set("Auth", token)
 			req.AddCookie(&http.Cookie{
 				Name:  "Auth",
 				Value: token,
