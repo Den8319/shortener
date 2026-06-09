@@ -85,8 +85,16 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userUUID := getUser(r)
+	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	if userUUID == "" {
+		log.Warn().Msg("failed to get user ID")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	log.Info().Msg("call GetShortURL")
-	shortURL, err := h.store.GetShortURL(context.TODO(), longURL, "")
+	shortURL, err := h.store.GetShortURL(context.TODO(), longURL, userUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 			fullShortURL, buildErr := url.JoinPath(h.baseURL, shortURL)
@@ -147,7 +155,16 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL, "")
+	userUUID := getUser(r)
+	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	if userUUID == "" {
+		log.Warn().Msg("failed to get user ID")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+
+	shortURL, err := h.store.GetShortURL(context.TODO(), req.LongURL, userUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
 

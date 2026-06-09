@@ -89,10 +89,7 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 
 func getUser(r *http.Request) string {
 	
-	authCookie, err := r.Cookie("Auth")
-	if err != nil {
-		return ""
-	}
-	
-	return auth.GetUser(authCookie.Value)
+	authCookie := r.Header.Get("Auth")
+	 	
+	return auth.GetUser(authCookie)
 }
