@@ -1,16 +1,20 @@
 package store
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
+	file "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestFileStore(t *testing.T) *FileStore {
+func newTestStore(t *testing.T) *Store {
 	t.Helper()
-	s, err := NewFileStore(filepath.Join(t.TempDir(), "store.json"))
+	fileloader, err := file.New(filepath.Join(t.TempDir(), "store.json"))
+	require.NoError(t, err)
+	s, err := New(fileloader)
 	require.NoError(t, err)
 	t.Cleanup(func() { s.Close() })
 	return s
@@ -28,11 +32,6 @@ func TestGetShortURL(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "same URL returns same short",
-			urls:    []string{"https://yandex.com", "https://yandex.com"},
-			wantErr: false,
-		},
-		{
 			name:    "different URLs return different shorts",
 			urls:    []string{"https://yandex.com", "https://google.com"},
 			wantErr: false,
@@ -41,11 +40,11 @@ func TestGetShortURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := newTestFileStore(t)
+			s := newTestStore(t)
 
 			var shorts []string
 			for _, u := range tt.urls {
-				short, err := s.GetShortURL(u)
+				short, err := s.GetShortURL(context.Background(), u,"dfsfsdfsdfv")
 				if tt.wantErr {
 					assert.Error(t, err)
 					return
@@ -59,7 +58,7 @@ func TestGetShortURL(t *testing.T) {
 				assert.Equal(t, shorts[0], shorts[1], "same urls")
 			}
 			if len(tt.urls) == 2 && tt.urls[0] != tt.urls[1] {
-				assert.NotEqual(t, shorts[0], shorts[1], "diffrent urls")
+				assert.NotEqual(t, shorts[0], shorts[1], "different urls")
 			}
 		})
 	}
@@ -69,15 +68,15 @@ func TestGetLongURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		longURL  string
-		lookupFn func(s *FileStore) string // возвращает shortURL для поиска
+		lookupFn func(s *Store) string
 		wantLong string
 		wantErr  bool
 	}{
 		{
 			name:    "existing short returns long",
 			longURL: "https://example.com",
-			lookupFn: func(s *FileStore) string {
-				short, _ := s.GetShortURL("https://example.com")
+			lookupFn: func(s *Store) string {
+				short, _ := s.GetShortURL(context.Background(), "https://example.com","dfsfsdfsdfv")
 				return short
 			},
 			wantLong: "https://example.com",
@@ -86,7 +85,7 @@ func TestGetLongURL(t *testing.T) {
 		{
 			name:    "unknown short returns error",
 			longURL: "",
-			lookupFn: func(_ *FileStore) string {
+			lookupFn: func(_ *Store) string {
 				return "nonexistent"
 			},
 			wantErr: true,
@@ -95,10 +94,10 @@ func TestGetLongURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := newTestFileStore(t)
+			s := newTestStore(t)
 
 			short := tt.lookupFn(s)
-			long, err := s.GetLongURL(short)
+			long, err := s.GetLongURL(context.Background(), short)
 
 			if tt.wantErr {
 				assert.Error(t, err)

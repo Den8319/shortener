@@ -8,33 +8,61 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Den8319/shortener/internal/auth"
+	fileRepo "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v4"
 )
 
-func newTestStore(t *testing.T) *store.FileStore {
+func init() {
+	auth.Init("test-secret-key")
+}
+
+// createTestToken создает валидный JWT токен для тестов
+func createTestToken(t *testing.T, userID string) string {
 	t.Helper()
-	s, err := store.NewFileStore(t.TempDir() + "/store.json")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 12)),
+		},
+		User: userID,
+	})
+	signed, err := token.SignedString([]byte("test-secret-key"))
 	require.NoError(t, err)
+	return signed
+}
+
+func newTestStore(t *testing.T) *store.Store {
+	t.Helper()
+	repo, err := fileRepo.New(t.TempDir() + "/store.json")
+	if err != nil {
+		t.Fatalf("failed to create file repository: %v", err)
+	}
+	s, err := store.New(repo)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
 	t.Cleanup(func() { s.Close() })
 	return s
 }
 
 func Test_ShortenTextHandler(t *testing.T) {
-
-	// Создаем тестовые данные
+	// Тестовые данные
 	longURL := "https://sberbank.ru"
-	baseUrl := "https://sberbank.ru"
+	baseURL := "https://short.ru"
 
-	// Создаем мок хранилища
+	// Создаём новое хранилище для каждого запуска
 	s := newTestStore(t)
-	h := NewHandler(s, baseUrl)
+	h := NewHandler(s, baseURL, "test-secret-key")
 
+	// Маршрутизатор
 	route := chi.NewRouter()
 	route.Post("/", h.ShortenTextHandler)
 
@@ -42,6 +70,22 @@ func Test_ShortenTextHandler(t *testing.T) {
 		Status int
 		Header string
 		Type   string
+	}
+
+	// Вспомогательная функция для проверки ответа
+	checkResponse := func(t *testing.T, w *httptest.ResponseRecorder, want want) {
+		t.Helper()
+		assert.Equal(t, want.Status, w.Code, "ожидаемый статус код не совпадает")
+
+		if want.Header != "" {
+			assert.Equal(t, want.Type, w.Header().Get(want.Header), "тип содержимого не совпадает")
+		}
+
+		if want.Status == http.StatusCreated {
+			response := strings.TrimSpace(w.Body.String())
+			assert.NotEmpty(t, response, "тело ответа не должно быть пустым")
+			assert.True(t, strings.HasPrefix(response, baseURL), "ответ должен быть полным коротким URL")
+		}
 	}
 
 	tests := []struct {
@@ -52,7 +96,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 		want   want
 	}{
 		{
-			name:   "positive",
+			name:   "positive - первый запрос, должен создать URL",
 			method: http.MethodPost,
 			path:   "/",
 			body:   longURL,
@@ -63,7 +107,18 @@ func Test_ShortenTextHandler(t *testing.T) {
 			},
 		},
 		{
-			name:   "negative wrong method",
+			name:   "positive conflict - второй запрос, тот же URL",
+			method: http.MethodPost,
+			path:   "/",
+			body:   longURL,
+			want: want{
+				Status: http.StatusConflict,
+				Header: "Content-Type",
+				Type:   "text/plain",
+			},
+		},
+		{
+			name:   "negative - wrong method (PUT)",
 			method: http.MethodPut,
 			path:   "/",
 			body:   longURL,
@@ -72,7 +127,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 			},
 		},
 		{
-			name:   "negative wrong body",
+			name:   "negative - invalid URL format",
 			method: http.MethodPost,
 			path:   "/",
 			body:   "http/sber",
@@ -81,7 +136,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 			},
 		},
 		{
-			name:   "negative empty body",
+			name:   "negative - empty body",
 			method: http.MethodPost,
 			path:   "/",
 			body:   "",
@@ -91,26 +146,24 @@ func Test_ShortenTextHandler(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			bodyReader := strings.NewReader(test.body)
-
-			req := httptest.NewRequest(test.method, test.path, bodyReader)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Подготавливаем тело запроса
+			bodyReader := strings.NewReader(tt.body)
+			req := httptest.NewRequest(tt.method, tt.path, bodyReader)
+			token := createTestToken(t, "test-user-uuid")
+			req.Header.Set("Auth", token)
+			req.AddCookie(&http.Cookie{
+				Name:  "Auth",
+				Value: token,
+			})
 			w := httptest.NewRecorder()
 
+			// Выполняем запрос
 			route.ServeHTTP(w, req)
 
-			assert.Equal(t, test.want.Status, w.Code)
-
-			if test.want.Header != "" {
-				assert.Equal(t, test.want.Type, w.Header().Get(test.want.Header))
-			}
-
-			if test.want.Status == http.StatusCreated {
-				shortURL, err := s.GetShortURL(longURL)
-				assert.NoError(t, err)
-				assert.NotEmpty(t, shortURL)
-			}
+			// Проверяем результат
+			checkResponse(t, w, tt.want)
 		})
 	}
 }
@@ -123,7 +176,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 
 	// Создаем мок хранилища
 	s := newTestStore(t)
-	h := NewHandler(s, baseUrl)
+	h := NewHandler(s, baseUrl, "test-secret-key")
 
 	route := chi.NewRouter()
 	route.Post("/api/shorten", h.ShortenJSONHandler)
@@ -135,11 +188,11 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	}
 
 	type want struct {
-		status       int
-		contentType  string
-		location     string
-		responseHas  string
-		headerExists string
+		Status       int
+		ContentType  string
+		Location     string
+		ResponseHas  string
+		HeaderExists string
 	}
 
 	tests := []struct {
@@ -155,10 +208,10 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   jsonBody(longURL),
 			want: want{
-				status:       http.StatusCreated,
-				contentType:  "application/json",
-				responseHas:  "https://short.ru",
-				headerExists: "Content-Type",
+				Status:       http.StatusCreated,
+				ContentType:  "application/json",
+				ResponseHas:  "https://short.ru",
+				HeaderExists: "Content-Type",
 			},
 		},
 		{
@@ -167,7 +220,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   jsonBody(longURL),
 			want: want{
-				status: http.StatusMethodNotAllowed,
+				Status: http.StatusMethodNotAllowed,
 			},
 		},
 		{
@@ -176,7 +229,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   bytes.NewBuffer([]byte("{invalid json}")),
 			want: want{
-				status: http.StatusBadRequest,
+				Status: http.StatusBadRequest,
 			},
 		},
 		{
@@ -185,7 +238,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   jsonBody(""),
 			want: want{
-				status: http.StatusBadRequest,
+				Status: http.StatusBadRequest,
 			},
 		},
 		{
@@ -194,7 +247,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   jsonBody("ftp://example.com"),
 			want: want{
-				status: http.StatusBadRequest,
+				Status: http.StatusBadRequest,
 			},
 		},
 		{
@@ -203,7 +256,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   bytes.NewBuffer([]byte("{}")),
 			want: want{
-				status: http.StatusBadRequest,
+				Status: http.StatusBadRequest,
 			},
 		},
 		{
@@ -212,7 +265,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 			path:   "/api/shorten",
 			body:   jsonBody(longURL),
 			want: want{
-				status: http.StatusBadRequest,
+				Status: http.StatusBadRequest,
 			},
 		},
 	}
@@ -220,23 +273,29 @@ func Test_ShortenJSONHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, tt.body)
-			w := httptest.NewRecorder()
 
 			if !strings.Contains(tt.name, "wrong content-type") {
 				req.Header.Set("Content-Type", "application/json")
 			}
+			token := createTestToken(t, "test-user-uuid")
+			req.Header.Set("Auth", token)
+			req.AddCookie(&http.Cookie{
+				Name:  "Auth",
+				Value: token,
+			})
+			w := httptest.NewRecorder()
 
 			route.ServeHTTP(w, req)
 
-			assert.Equal(t, tt.want.status, w.Code)
+			assert.Equal(t, tt.want.Status, w.Code)
 
-			if tt.want.headerExists == "Content-Type" {
-				assert.Equal(t, tt.want.contentType, w.Header().Get("Content-Type"))
+			if tt.want.HeaderExists == "Content-Type" {
+				assert.Equal(t, tt.want.ContentType, w.Header().Get("Content-Type"))
 			}
 
-			if tt.want.responseHas != "" {
+			if tt.want.ResponseHas != "" {
 				response := w.Body.String()
-				assert.Contains(t, response, tt.want.responseHas)
+				assert.Contains(t, response, tt.want.ResponseHas)
 			}
 		})
 	}
@@ -245,12 +304,12 @@ func Test_ShortenJSONHandler(t *testing.T) {
 func Test_GetURLHandler(t *testing.T) {
 
 	longURL := "https://sberbank.ru"
-	baseUrl := "https://sberbank.ru"
+	baseUrl := "https://short.ru"
 
 	s := newTestStore(t)
-	h := NewHandler(s, baseUrl)
+	h := NewHandler(s, baseUrl, "test-secret-key")
 
-	shortURL, err := s.GetShortURL(longURL)
+	shortURL, err := s.GetShortURL(context.Background(), longURL, "test-user-uuid")
 	require.NoError(t, err)
 	assert.NotEmpty(t, shortURL)
 
