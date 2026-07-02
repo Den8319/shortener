@@ -29,6 +29,14 @@ const (
 	envSecretKey     = "SECRET_KEY"
 	flagSecretKey    = "k"
 	defaultSecretKey = ""
+
+	envAuditFile     = "AUDIT_FILE"
+	flagAuditFile    = "audit-file"
+	defaultAuditFile = ""
+
+	envAuditURL     = "AUDIT_URL"
+	flagAuditURL    = "audit-url"
+	defaultAuditURL = ""
 )
 
 type Config struct {
@@ -38,6 +46,8 @@ type Config struct {
 	FileStoragePath string
 	DatabaseDSN     string
 	SecretKey       string
+	AuditFile       string
+	AuditURL        string
 }
 
 func getParam(envName, flagValue string) string {
@@ -57,6 +67,8 @@ func New() *Config {
 	filePath := flag.String(flagFileStoragePath, defaultFileStoragePath, "")
 	databaseDSN := flag.String(flagDatabaseDSN, defaultDatabaseDSN, "")
 	secretKey := flag.String(flagSecretKey, defaultSecretKey, "")
+	auditFile := flag.String(flagAuditFile, defaultAuditFile, "")
+	auditURL := flag.String(flagAuditURL, defaultAuditURL, "")
 
 	flag.Parse()
 
@@ -67,6 +79,8 @@ func New() *Config {
 		FileStoragePath: getParam(envFileStoragePath, *filePath),
 		DatabaseDSN:     getParam(envDatabaseDSN, *databaseDSN),
 		SecretKey:       getParam(envSecretKey, *secretKey),
+		AuditFile:       getParam(envAuditFile, *auditFile),
+		AuditURL:        getParam(envAuditURL, *auditURL),
 	}
 
 	return cfg
