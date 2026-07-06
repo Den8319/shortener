@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func Test_getUser_Security_Fixed(t *testing.T) {
 
 	auth.Init("secret-key-test-12345")
@@ -45,7 +44,7 @@ func Test_getUser_Security_Fixed(t *testing.T) {
 			name: "поддельная кука User без валидного Auth - должен игнорировать User и вернуть пустую строку",
 			setupRequest: func() *http.Request {
 				req := httptest.NewRequest("GET", "/", nil)
-				
+
 				req.AddCookie(&http.Cookie{
 					Name:  "User",
 					Value: "hacker-user-id", //  подделка
@@ -58,16 +57,16 @@ func Test_getUser_Security_Fixed(t *testing.T) {
 		{
 			name: "просроченный токен в куке Auth - должен вернуть пустую строку",
 			setupRequest: func() *http.Request {
-			
+
 				claims := auth.Claims{
 					RegisteredClaims: jwt.RegisteredClaims{
-						ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)), 
+						ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
 					},
 					User: "user-456",
 				}
 				token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 				signedToken, _ := token.SignedString([]byte("secret-key-test-12345"))
-				
+
 				req := httptest.NewRequest("GET", "/", nil)
 				req.AddCookie(&http.Cookie{
 					Name:  "Auth",

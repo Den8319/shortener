@@ -95,7 +95,7 @@ func TestSaveAndLoad(t *testing.T) {
 			fl := newTestLoader(t, path)
 
 			for _, rec := range tt.records {
-				err := fl.Save(context.Background(), &model.URL{ShortURL: rec.short, LongURL: rec.long},"test-user-uuid")
+				err := fl.Save(context.Background(), &model.URL{ShortURL: rec.short, LongURL: rec.long}, "test-user-uuid")
 				require.NoError(t, err)
 			}
 			fl.Close()

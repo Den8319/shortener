@@ -10,6 +10,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// newTestStoreB - версия для бенчмарков
+func newTestStoreB() *Store {
+	repo, err := file.New("test_store.json")
+	if err != nil {
+		panic(err)
+	}
+	s, err := New(repo)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 	fileloader, err := file.New(filepath.Join(t.TempDir(), "store.json"))
@@ -44,7 +57,7 @@ func TestGetShortURL(t *testing.T) {
 
 			var shorts []string
 			for _, u := range tt.urls {
-				short, err := s.GetShortURL(context.Background(), u,"dfsfsdfsdfv")
+				short, err := s.GetShortURL(context.Background(), u, "dfsfsdfsdfv")
 				if tt.wantErr {
 					assert.Error(t, err)
 					return
@@ -76,7 +89,7 @@ func TestGetLongURL(t *testing.T) {
 			name:    "existing short returns long",
 			longURL: "https://example.com",
 			lookupFn: func(s *Store) string {
-				short, _ := s.GetShortURL(context.Background(), "https://example.com","dfsfsdfsdfv")
+				short, _ := s.GetShortURL(context.Background(), "https://example.com", "dfsfsdfsdfv")
 				return short
 			},
 			wantLong: "https://example.com",
@@ -107,4 +120,49 @@ func TestGetLongURL(t *testing.T) {
 			assert.Equal(t, tt.wantLong, long)
 		})
 	}
+}
+
+func BenchmarkGetShortURL(b *testing.B) {
+	s := newTestStoreB()
+	baseURL := "https://example.com/test"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		url := baseURL + "-" + string(rune('a'+i%26)) + "-" + string(rune('0'+i/26)) + "-" + string(rune('0'+i/676))
+		_, err := s.GetShortURL(context.Background(), url, "test-user")
+		if err != nil {
+			b.Errorf("GetShortURL() error = %v", err)
+		}
+	}
+	s.Close()
+}
+
+func BenchmarkGetLongURL(b *testing.B) {
+	s := newTestStoreB()
+	url := "https://example.com/test"
+	short, _ := s.GetShortURL(context.Background(), url, "test-user")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := s.GetLongURL(context.Background(), short)
+		if err != nil {
+			b.Errorf("GetLongURL() error = %v", err)
+		}
+	}
+	s.Close()
+}
+
+func BenchmarkFindOrGenerate(b *testing.B) {
+	s := newTestStoreB()
+	url := "https://example.com/test"
+
+	for i := 0; i < 100; i++ {
+		s.GetShortURL(context.Background(), url+"-"+string(rune('a'+i%26)), "test-user")
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = s.findOrGenerate(url)
+	}
+	s.Close()
 }

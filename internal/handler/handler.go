@@ -56,7 +56,6 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	longURL, err := h.store.GetLongURL(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, model.ErrURLDeleted) {
@@ -94,7 +93,6 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-
 
 	shortURL, err := h.store.GetShortURL(r.Context(), longURL, userUUID)
 	if err != nil {

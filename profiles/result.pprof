@@ -1,0 +1,404 @@
+heap profile: 17: 3754560 [247: 18292552] @ heap/1048576
+0: 0 [4: 192] @ 0x7ff600703e05 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600703e04	encoding/json.(*decodeState).object+0x904					C:/Program Files/Go/src/encoding/json/decode.go:707
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d						C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d					C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8							C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 655360] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [2: 32] @ 0x7ff60070f6f9 0x7ff60070fafa 0x7ff60070f3fd 0x7ff600701a94 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff60070f6f8	encoding/json.(*scanner).pushParseState+0x58						C:/Program Files/Go/src/encoding/json/scanner.go:181
+#	0x7ff60070faf9	encoding/json.stateBeginValue+0x1f9							C:/Program Files/Go/src/encoding/json/scanner.go:224
+#	0x7ff60070f3fc	encoding/json.checkValid+0x9c								C:/Program Files/Go/src/encoding/json/scanner.go:37
+#	0x7ff600701a93	encoding/json.Unmarshal+0x53								C:/Program Files/Go/src/encoding/json/decode.go:107
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [6: 96] @ 0x7ff600705b6c 0x7ff600702735 0x7ff600704251 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600705b6b	encoding/json.(*decodeState).literalStore+0xa4b						C:/Program Files/Go/src/encoding/json/decode.go:958
+#	0x7ff600702734	encoding/json.(*decodeState).value+0x114						C:/Program Files/Go/src/encoding/json/decode.go:394
+#	0x7ff600704250	encoding/json.(*decodeState).object+0xd50						C:/Program Files/Go/src/encoding/json/decode.go:767
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d							C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d						C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8								C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [57: 8208] @ 0x7ff600701a77 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600701a76	encoding/json.Unmarshal+0x36								C:/Program Files/Go/src/encoding/json/decode.go:106
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [20: 960] @ 0x7ff600703e05 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600703e04	encoding/json.(*decodeState).object+0x904						C:/Program Files/Go/src/encoding/json/decode.go:707
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d							C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d						C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8								C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [9: 144] @ 0x7ff600704e47 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600704e46	encoding/json.(*decodeState).object+0x1946						C:/Program Files/Go/src/encoding/json/decode.go:738
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d							C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d						C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8								C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [1: 16] @ 0x7ff6004f7a05 0x7ff6004ff898 0x7ff6004ff8a1 0x7ff60050ccab 0x7ff60050d154 0x7ff60050d3ee 0x7ff60050da05 0x7ff60050df2f 0x7ff6004ec1ec 0x7ff60050a9e5 0x7ff60050a9c0 0x7ff6005084bf 0x7ff6005073ef 0x7ff600501286 0x7ff600726b30 0x7ff60072a54a 0x7ff60072b705 0x7ff600729557 0x7ff600949abc 0x7ff600949a86 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff6004f7a04	syscall.UTF16FromString+0x64					C:/Program Files/Go/src/syscall/syscall_windows.go:53
+#	0x7ff6004ff897	syscall.UTF16PtrFromString+0x37					C:/Program Files/Go/src/syscall/syscall_windows.go:115
+#	0x7ff6004ff8a0	internal/syscall/windows/registry.Key.GetMUIStringValue+0x40	C:/Program Files/Go/src/internal/syscall/windows/registry/value.go:119
+#	0x7ff60050ccaa	time.matchZoneKey+0xca						C:/Program Files/Go/src/time/zoneinfo_windows.go:36
+#	0x7ff60050d153	time.toEnglishName+0x193					C:/Program Files/Go/src/time/zoneinfo_windows.go:70
+#	0x7ff60050d3ed	time.abbrev+0xad						C:/Program Files/Go/src/time/zoneinfo_windows.go:96
+#	0x7ff60050da04	time.initLocalFromTZI+0xc4					C:/Program Files/Go/src/time/zoneinfo_windows.go:148
+#	0x7ff60050df2e	time.initLocal+0x8e						C:/Program Files/Go/src/time/zoneinfo_windows.go:236
+#	0x7ff6004ec1eb	sync.(*Once).doSlow+0xab					C:/Program Files/Go/src/sync/once.go:78
+#	0x7ff60050a9e4	sync.(*Once).Do+0x44						C:/Program Files/Go/src/sync/once.go:69
+#	0x7ff60050a9bf	time.(*Location).get+0x1f					C:/Program Files/Go/src/time/zoneinfo.go:96
+#	0x7ff6005084be	time.Time.locabs+0x3e						C:/Program Files/Go/src/time/time.go:788
+#	0x7ff6005073ee	time.Time.appendFormatRFC3339+0x4e				C:/Program Files/Go/src/time/format_rfc3339.go:19
+#	0x7ff600501285	time.Time.AppendFormat+0x185					C:/Program Files/Go/src/time/format.go:659
+#	0x7ff600726b2f	github.com/rs/zerolog/internal/json.Encoder.AppendTime+0x28f	E:/Project/Golang/pkg/mod/github.com/rs/zerolog@v1.35.0/internal/json/time.go:32
+#	0x7ff60072a549	github.com/rs/zerolog.(*Event).Timestamp+0x109			E:/Project/Golang/pkg/mod/github.com/rs/zerolog@v1.35.0/event.go:759
+#	0x7ff60072b704	github.com/rs/zerolog.timestampHook.Run+0x24			E:/Project/Golang/pkg/mod/github.com/rs/zerolog@v1.35.0/context.go:396
+#	0x7ff600729556	github.com/rs/zerolog.(*Event).msg+0x76				E:/Project/Golang/pkg/mod/github.com/rs/zerolog@v1.35.0/event.go:152
+#	0x7ff600949abb	github.com/rs/zerolog.(*Event).Msg+0x29b			E:/Project/Golang/pkg/mod/github.com/rs/zerolog@v1.35.0/event.go:119
+#	0x7ff600949a85	main.main+0x265							E:/Project/shortener/shortener/cmd/shortener/main.go:50
+#	0x7ff6004a56dc	runtime.main+0x27c						C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [40: 3200] @ 0x7ff600911cf9 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600911cf8	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x378	E:/Project/shortener/shortener/internal/repository/file/file.go:228
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [1: 1048576] @ 0x7ff600910865 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910864	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x324	E:/Project/shortener/shortener/internal/repository/file/file.go:92
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 48] @ 0x7ff600708549 0x7ff6007084f3 0x7ff600714df3 0x7ff60070d66a 0x7ff600708eb6 0x7ff600708f77 0x7ff600708b45 0x7ff6007087b8 0x7ff6004ec1ec 0x7ff6007086aa 0x7ff600708674 0x7ff600708673 0x7ff600708445 0x7ff600708365 0x7ff600708152 0x7ff600707b7e 0x7ff600730f95 0x7ff600730e46 0x7ff600735c72 0x7ff600735686 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600708548	sync.OnceValue[...]+0xc8							C:/Program Files/Go/src/sync/oncefunc.go:48
+#	0x7ff6007084f2	encoding/json.typeEncoder+0x72							C:/Program Files/Go/src/encoding/json/encode.go:399
+#	0x7ff600714df2	encoding/json.typeFields+0x772							C:/Program Files/Go/src/encoding/json/encode.go:1323
+#	0x7ff60070d669	encoding/json.cachedTypeFields+0x129						C:/Program Files/Go/src/encoding/json/encode.go:1360
+#	0x7ff600708eb5	encoding/json.newStructEncoder+0x355						C:/Program Files/Go/src/encoding/json/encode.go:768
+#	0x7ff600708f76	encoding/json.newTypeEncoder+0x416						C:/Program Files/Go/src/encoding/json/encode.go:455
+#	0x7ff600708b44	encoding/json.typeEncoder.func1+0x24						C:/Program Files/Go/src/encoding/json/encode.go:400
+#	0x7ff6007087b7	encoding/json.typeEncoder.typeEncoder.OnceValue[...].func3.func4+0x57		C:/Program Files/Go/src/sync/oncefunc.go:66
+#	0x7ff6004ec1eb	sync.(*Once).doSlow+0xab							C:/Program Files/Go/src/sync/once.go:78
+#	0x7ff6007086a9	sync.(*Once).Do+0x229								C:/Program Files/Go/src/sync/once.go:69
+#	0x7ff600708673	encoding/json.typeEncoder.OnceValue[...].func3+0x1f3				C:/Program Files/Go/src/sync/oncefunc.go:58
+#	0x7ff600708672	encoding/json.typeEncoder+0x1f2							C:/Program Files/Go/src/encoding/json/encode.go:409
+#	0x7ff600708444	encoding/json.valueEncoder+0x44							C:/Program Files/Go/src/encoding/json/encode.go:385
+#	0x7ff600708364	encoding/json.(*encodeState).reflectValue+0x44					C:/Program Files/Go/src/encoding/json/encode.go:367
+#	0x7ff600708151	encoding/json.(*encodeState).marshal+0xb1					C:/Program Files/Go/src/encoding/json/encode.go:343
+#	0x7ff600707b7d	encoding/json.Marshal+0xbd							C:/Program Files/Go/src/encoding/json/encode.go:209
+#	0x7ff600730f94	github.com/golang-jwt/jwt/v4.(*Token).SigningString+0x74			E:/Project/Golang/pkg/mod/github.com/golang-jwt/jwt/v4@v4.5.2/token.go:89
+#	0x7ff600730e45	github.com/golang-jwt/jwt/v4.(*Token).SignedString+0x25				E:/Project/Golang/pkg/mod/github.com/golang-jwt/jwt/v4@v4.5.2/token.go:67
+#	0x7ff600735c71	github.com/Den8319/shortener/internal/auth.newCookie+0x311			E:/Project/shortener/shortener/internal/auth/auth.go:71
+#	0x7ff600735685	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0xc5			E:/Project/shortener/shortener/internal/auth/auth.go:33
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28						C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed	E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28						C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168		E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28						C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed					E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d						C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664							C:/Program Files/Go/src/net/http/server.go:2109
+
+0: 0 [10: 1440] @ 0x7ff600701a77 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600701a76	encoding/json.Unmarshal+0x36							C:/Program Files/Go/src/encoding/json/decode.go:106
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 16] @ 0x7ff600704e47 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600704e46	encoding/json.(*decodeState).object+0x1946					C:/Program Files/Go/src/encoding/json/decode.go:738
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d						C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d					C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8							C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 1703936] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 4096] @ 0x7ff6006f618b 0x7ff6006f6167 0x7ff6006d75da 0x7ff6004e1961
+#	0x7ff6006f618a	bufio.NewWriterSize+0x1aa		C:/Program Files/Go/src/bufio/bufio.go:602
+#	0x7ff6006f6166	net/http.newBufioWriterSize+0x186	C:/Program Files/Go/src/net/http/server.go:909
+#	0x7ff6006d75d9	net/http.(*conn).serve+0x2f9		C:/Program Files/Go/src/net/http/server.go:2018
+
+0: 0 [1: 1064960] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 1351680] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 835584] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 122880] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [10: 800] @ 0x7ff60091095c 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff60091095b	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x41b	E:/Project/shortener/shortener/internal/repository/file/file.go:101
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 393216] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+0: 0 [1: 24] @ 0x7ff600705b6c 0x7ff600702735 0x7ff600704251 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600705b6b	encoding/json.(*decodeState).literalStore+0xa4b						C:/Program Files/Go/src/encoding/json/decode.go:958
+#	0x7ff600702734	encoding/json.(*decodeState).value+0x114						C:/Program Files/Go/src/encoding/json/decode.go:394
+#	0x7ff600704250	encoding/json.(*decodeState).object+0xd50						C:/Program Files/Go/src/encoding/json/decode.go:767
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d							C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d						C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8								C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+1: 16 [1: 16] @ 0x7ff600705b6c 0x7ff600702735 0x7ff600704251 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600705b6b	encoding/json.(*decodeState).literalStore+0xa4b					C:/Program Files/Go/src/encoding/json/decode.go:958
+#	0x7ff600702734	encoding/json.(*decodeState).value+0x114					C:/Program Files/Go/src/encoding/json/decode.go:394
+#	0x7ff600704250	encoding/json.(*decodeState).object+0xd50					C:/Program Files/Go/src/encoding/json/decode.go:767
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d						C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d					C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8							C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+2: 32 [2: 32] @ 0x7ff60070f6f9 0x7ff60070fafa 0x7ff60070f3fd 0x7ff600701a94 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff60070f6f8	encoding/json.(*scanner).pushParseState+0x58					C:/Program Files/Go/src/encoding/json/scanner.go:181
+#	0x7ff60070faf9	encoding/json.stateBeginValue+0x1f9						C:/Program Files/Go/src/encoding/json/scanner.go:224
+#	0x7ff60070f3fc	encoding/json.checkValid+0x9c							C:/Program Files/Go/src/encoding/json/scanner.go:37
+#	0x7ff600701a93	encoding/json.Unmarshal+0x53							C:/Program Files/Go/src/encoding/json/decode.go:107
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+1: 48 [53: 2544] @ 0x7ff600705b6c 0x7ff600702735 0x7ff600704251 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff600911d2b 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600705b6b	encoding/json.(*decodeState).literalStore+0xa4b						C:/Program Files/Go/src/encoding/json/decode.go:958
+#	0x7ff600702734	encoding/json.(*decodeState).value+0x114						C:/Program Files/Go/src/encoding/json/decode.go:394
+#	0x7ff600704250	encoding/json.(*decodeState).object+0xd50						C:/Program Files/Go/src/encoding/json/decode.go:767
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d							C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d						C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8								C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff600911d2a	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x3aa	E:/Project/shortener/shortener/internal/repository/file/file.go:229
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+10: 480 [10: 480] @ 0x7ff600705b6c 0x7ff600702735 0x7ff600704251 0x7ff60070265e 0x7ff600701f3e 0x7ff600701b39 0x7ff60091098e 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600705b6b	encoding/json.(*decodeState).literalStore+0xa4b					C:/Program Files/Go/src/encoding/json/decode.go:958
+#	0x7ff600702734	encoding/json.(*decodeState).value+0x114					C:/Program Files/Go/src/encoding/json/decode.go:394
+#	0x7ff600704250	encoding/json.(*decodeState).object+0xd50					C:/Program Files/Go/src/encoding/json/decode.go:767
+#	0x7ff60070265d	encoding/json.(*decodeState).value+0x3d						C:/Program Files/Go/src/encoding/json/decode.go:380
+#	0x7ff600701f3d	encoding/json.(*decodeState).unmarshal+0x11d					C:/Program Files/Go/src/encoding/json/decode.go:183
+#	0x7ff600701b38	encoding/json.Unmarshal+0xf8							C:/Program Files/Go/src/encoding/json/decode.go:113
+#	0x7ff60091098d	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x44d	E:/Project/shortener/shortener/internal/repository/file/file.go:102
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+1: 2048 [1: 2048] @ 0x7ff6004a94f1 0x7ff6004a9f35 0x7ff6004aa5f9 0x7ff6004d9bac 0x7ff6004acd9e 0x7ff6004ad2aa 0x7ff6004a8c77 0x7ff6004a8b8a 0x7ff6004df885
+#	0x7ff6004a94f0	runtime.allocm+0x90		C:/Program Files/Go/src/runtime/proc.go:2339
+#	0x7ff6004a9f34	runtime.newm+0x34		C:/Program Files/Go/src/runtime/proc.go:2875
+#	0x7ff6004aa5f8	runtime.startm+0x158		C:/Program Files/Go/src/runtime/proc.go:3101
+#	0x7ff6004d9bab	runtime.wakep+0xeb		C:/Program Files/Go/src/runtime/proc.go:3248
+#	0x7ff6004acd9d	runtime.resetspinning+0x3d	C:/Program Files/Go/src/runtime/proc.go:4022
+#	0x7ff6004ad2a9	runtime.schedule+0x109		C:/Program Files/Go/src/runtime/proc.go:4175
+#	0x7ff6004a8c76	runtime.mstart1+0xd6		C:/Program Files/Go/src/runtime/proc.go:1949
+#	0x7ff6004a8b89	runtime.mstart0+0x69		C:/Program Files/Go/src/runtime/proc.go:1895
+#	0x7ff6004df884	runtime.mstart+0x4		C:/Program Files/Go/src/runtime/asm_amd64.s:395
+
+1: 1048576 [8: 8388608] @ 0x7ff600911c78 0x7ff600913b30 0x7ff60075c236 0x7ff6006d9489 0x7ff60075618f 0x7ff6006d9489 0x7ff600735922 0x7ff6006d9489 0x7ff6007369ae 0x7ff6006d9489 0x7ff60075d529 0x7ff6006d9489 0x7ff600754aee 0x7ff6006f63ee 0x7ff6006d7945 0x7ff6004e1961
+#	0x7ff600911c77	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).GetUserURLs+0x2f7	E:/Project/shortener/shortener/internal/repository/file/file.go:223
+#	0x7ff600913b2f	github.com/Den8319/shortener/internal/service/store.(*Store).GetUserURLs+0x2f		E:/Project/shortener/shortener/internal/service/store/store.go:168
+#	0x7ff60075c235	github.com/Den8319/shortener/internal/handler.(*Handler).GetUserURLsHandler+0xd5	E:/Project/shortener/shortener/internal/handler/user.go:25
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075618e	github.com/go-chi/chi/v5.(*Mux).routeHTTP+0x50e						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:479
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600735921	github.com/Den8319/shortener/internal/auth.WithAuth.func1+0x361				E:/Project/shortener/shortener/internal/auth/auth.go:55
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff6007369ad	github.com/Den8319/shortener/internal/compress.WithCompression.func1+0x1ed		E:/Project/shortener/shortener/internal/compress/compress.go:86
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff60075d528	github.com/Den8319/shortener/internal/logger.WithLogging.func1+0x168			E:/Project/shortener/shortener/internal/logger/logger.go:73
+#	0x7ff6006d9488	net/http.HandlerFunc.ServeHTTP+0x28							C:/Program Files/Go/src/net/http/server.go:2322
+#	0x7ff600754aed	github.com/go-chi/chi/v5.(*Mux).ServeHTTP+0x2ed						E:/Project/Golang/pkg/mod/github.com/go-chi/chi/v5@v5.2.5/mux.go:90
+#	0x7ff6006f63ed	net/http.serverHandler.ServeHTTP+0x8d							C:/Program Files/Go/src/net/http/server.go:3340
+#	0x7ff6006d7944	net/http.(*conn).serve+0x664								C:/Program Files/Go/src/net/http/server.go:2109
+
+1: 2703360 [1: 2703360] @ 0x7ff600910a57 0x7ff600912832 0x7ff600949ad3 0x7ff6004a56dd 0x7ff6004e1961
+#	0x7ff600910a56	github.com/Den8319/shortener/internal/repository/file.(*Fileloader).Load+0x516	E:/Project/shortener/shortener/internal/repository/file/file.go:108
+#	0x7ff600912831	github.com/Den8319/shortener/internal/service/store.New+0x91			E:/Project/shortener/shortener/internal/service/store/store.go:37
+#	0x7ff600949ad2	main.main+0x2b2									E:/Project/shortener/shortener/cmd/shortener/main.go:53
+#	0x7ff6004a56dc	runtime.main+0x27c								C:/Program Files/Go/src/runtime/proc.go:285
+
+
+# runtime.MemStats
+# Alloc = 11154032
+# TotalAlloc = 146580984
+# Sys = 26167544
+# Lookups = 0
+# Mallocs = 2489687
+# Frees = 2330823
+# HeapAlloc = 11154032
+# HeapSys = 20676608
+# HeapIdle = 8699904
+# HeapInuse = 11976704
+# HeapReleased = 1835008
+# HeapObjects = 158864
+# Stack = 294912 / 294912
+# MSpan = 170080 / 326400
+# MCache = 4704 / 15288
+# BuckHashSys = 1454977
+# GCSys = 2711120
+# OtherSys = 688239
+# NextGC = 17089482
+# LastGC = 1783356132630324900
+# PauseNs = [0 0 0 0 0 0 0 0 0 0 0 150600 0 0 0 0 0 503400 0 505300 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+# PauseEnd = [1783355998010084700 1783355998022056300 1783355998034995100 1783355998054996500 1783355998072995300 1783355998098001700 1783356041755370800 1783356041823679800 1783356059698667200 1783356059762147300 1783356061296236700 1783356061357089700 1783356068688520500 1783356068749647500 1783356069957894200 1783356070908439700 1783356070969647600 1783356125161178900 1783356125223205800 1783356132543462300 1783356132630324900 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+# NumGC = 21
+# NumForcedGC = 0
+# GCCPUFraction = 6.243267918987707e-05
+# DebugGC = false
+# MaxRSS = 31203328

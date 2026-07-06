@@ -14,7 +14,9 @@ import (
 	"github.com/Den8319/shortener/internal/repository/db"
 	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
 )
 
@@ -82,6 +84,8 @@ func main() {
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
 	route.Use(auth.WithAuth)
+
+	route.Mount("/debug", middleware.Profiler())
 
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)

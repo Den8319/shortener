@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/rs/zerolog/log"
 	uuid "github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 const expire = time.Hour * 12

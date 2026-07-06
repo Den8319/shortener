@@ -1,4 +1,4 @@
-package audit 
+package audit
 
 import (
 	"encoding/json"
@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	 
 )
 
 type MockObserver struct {
@@ -61,7 +60,6 @@ func TestAuditor_Notify_DispatchesToAllObservers(t *testing.T) {
 	assert.Equal(t, event, mock1.GetEvents()[0])
 }
 
- 
 // Тест для HTTPObserver
 func TestHTTPObserver_Notify_TableDriven(t *testing.T) {
 	sampleEvent := AuditEvent{
@@ -84,10 +82,10 @@ func TestHTTPObserver_Notify_TableDriven(t *testing.T) {
 			handlerAsserts: func(t *testing.T, r *http.Request) {
 				assert.Equal(t, http.MethodPost, r.Method)
 				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-				
+
 				body, err := io.ReadAll(r.Body)
 				require.NoError(t, err)
-				
+
 				var received AuditEvent
 				err = json.Unmarshal(body, &received)
 				require.NoError(t, err)
@@ -132,12 +130,11 @@ func TestHTTPObserver_Notify_TableDriven(t *testing.T) {
 	}
 }
 
- 
 func TestFileObserver_Notify_WritesValidJSONLines(t *testing.T) {
- 
+
 	tmpFile, err := os.CreateTemp("", "audit_test_*.log")
 	require.NoError(t, err)
-	defer os.Remove(tmpFile.Name())  
+	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 
 	fo, err := NewFileObserver(tmpFile.Name())
@@ -147,25 +144,21 @@ func TestFileObserver_Notify_WritesValidJSONLines(t *testing.T) {
 	event1 := AuditEvent{Ts: 111, Action: "GetShort", UserID: "u1"}
 	event2 := AuditEvent{Ts: 222, Action: "GetLong", UserID: "u2"}
 
-	 
 	require.NoError(t, fo.Notify(event1))
 	require.NoError(t, fo.Notify(event2))
 
-	 
 	fileBytes, err := os.ReadFile(tmpFile.Name())
 	require.NoError(t, err)
- 
-	
+
 	var decoded1, decoded2 AuditEvent
-	
-	 
-	err = json.Unmarshal(fileBytes, &decoded1)  
+
+	err = json.Unmarshal(fileBytes, &decoded1)
 	f, err := os.Open(tmpFile.Name())
 	require.NoError(t, err)
 	defer f.Close()
 
 	dec := json.NewDecoder(f)
-	
+
 	err = dec.Decode(&decoded1)
 	require.NoError(t, err)
 	assert.Equal(t, event1, decoded1)
@@ -174,4 +167,3 @@ func TestFileObserver_Notify_WritesValidJSONLines(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, event2, decoded2)
 }
- 

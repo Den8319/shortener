@@ -2,8 +2,8 @@ package handler
 
 import (
 	"encoding/json"
-	"net/http"
 	"fmt"
+	"net/http"
 
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/model"
@@ -88,8 +88,8 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUser(r *http.Request) string {
-	
+
 	authCookie := r.Header.Get("Auth")
-	 	
+
 	return auth.GetUser(authCookie)
 }

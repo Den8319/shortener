@@ -48,7 +48,7 @@ func (db *DB) Migrate(ctx context.Context) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("failed to set dialect: %w", err)
 	}
- 
+
 	if err := goose.Up(db.conn, "migrations"); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
@@ -57,7 +57,6 @@ func (db *DB) Migrate(ctx context.Context) error {
 	return nil
 }
 
- 
 func (db *DB) loadList(ctx context.Context, conn Connector) (map[string]string, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err
@@ -180,7 +179,6 @@ func (db *DB) Delete(ctx context.Context, shortURLs []string, userUUID string) e
 	if len(shortURLs) == 0 {
 		return nil
 	}
-
 
 	// Формируем список идентификаторов для IN-запроса
 	placeholders := make([]string, len(shortURLs))

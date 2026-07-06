@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-
 	"github.com/rs/zerolog/log"
 )
 
@@ -25,7 +24,6 @@ type AuditEvent struct {
 type Observer interface {
 	Notify(event AuditEvent) error
 }
-
 
 type FileObserver struct {
 	file *os.File
@@ -90,7 +88,6 @@ func (ho *HTTPObserver) Notify(event AuditEvent) error {
 	return nil
 }
 
-
 type Auditor struct {
 	observers []Observer
 	mu        sync.RWMutex
@@ -102,13 +99,11 @@ func NewAuditor() *Auditor {
 	}
 }
 
-
 func (a *Auditor) Register(observer Observer) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.observers = append(a.observers, observer)
 }
-
 
 func (a *Auditor) Notify(event AuditEvent) {
 	a.mu.RLock()
@@ -117,7 +112,7 @@ func (a *Auditor) Notify(event AuditEvent) {
 	for _, observer := range a.observers {
 		if err := observer.Notify(event); err != nil {
 			log.Error().Err(err).Msg("[Audit Error] failed to notify observer")
-			
+
 		}
 	}
 }
