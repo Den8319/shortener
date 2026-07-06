@@ -2,24 +2,42 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	file "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// newTestStoreB - версия для бенчмарков
-func newTestStoreB() *Store {
-	repo, err := file.New("test_store.json")
-	if err != nil {
-		panic(err)
-	}
+func newTestStoreB(b *testing.B) *Store {
+	b.Helper()
+	tmpFile, err := os.CreateTemp("", "store-*.json")
+	require.NoError(b, err)
+	tmpFile.Close()
+
+	repo, err := file.New(tmpFile.Name())
+	require.NoError(b, err)
 	s, err := New(repo)
-	if err != nil {
-		panic(err)
+	require.NoError(b, err)
+
+	
+	for i := 0; i < 100; i++ {
+		url := fmt.Sprintf("https://benchmark-test-url-%d.com", i)
+		_, err := s.GetShortURL(context.Background(), url, "benchmark-user")
+		require.NoError(b, err)
 	}
+
+	b.Cleanup(func() {
+		os.Remove(tmpFile.Name())
+		s.Close()
+	})
+
+
+
 	return s
 }
 
@@ -123,22 +141,21 @@ func TestGetLongURL(t *testing.T) {
 }
 
 func BenchmarkGetShortURL(b *testing.B) {
-	s := newTestStoreB()
+	s := newTestStoreB(b)
 	baseURL := "https://example.com/test"
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		url := baseURL + "-" + string(rune('a'+i%26)) + "-" + string(rune('0'+i/26)) + "-" + string(rune('0'+i/676))
+		url := baseURL + "-url-" + fmt.Sprintf("%d-%d", i, time.Now().UnixNano())
 		_, err := s.GetShortURL(context.Background(), url, "test-user")
 		if err != nil {
 			b.Errorf("GetShortURL() error = %v", err)
 		}
 	}
-	s.Close()
 }
 
 func BenchmarkGetLongURL(b *testing.B) {
-	s := newTestStoreB()
+	s := newTestStoreB(b)
 	url := "https://example.com/test"
 	short, _ := s.GetShortURL(context.Background(), url, "test-user")
 
@@ -149,11 +166,10 @@ func BenchmarkGetLongURL(b *testing.B) {
 			b.Errorf("GetLongURL() error = %v", err)
 		}
 	}
-	s.Close()
 }
 
 func BenchmarkFindOrGenerate(b *testing.B) {
-	s := newTestStoreB()
+	s := newTestStoreB(b)
 	url := "https://example.com/test"
 
 	for i := 0; i < 100; i++ {
@@ -164,5 +180,4 @@ func BenchmarkFindOrGenerate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _, _ = s.findOrGenerate(url)
 	}
-	s.Close()
 }
