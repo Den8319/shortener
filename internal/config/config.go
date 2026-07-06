@@ -50,29 +50,28 @@ type Config struct {
 	AuditURL        string
 }
 
-func getParam(envName, flagValue string) string {
-
-	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
-		return envValue
-	}
-
-	return flagValue
-}
 
 func New() *Config {
 
-	serverAddr := flag.String(flagServerAddress, defaultServerAddress, "")
-	baseURL := flag.String(flagBaseAddress, defaultBaseAddress, "")
-	logLevel := flag.String(flagLogLevel, defaultLogLevel, "")
-	filePath := flag.String(flagFileStoragePath, defaultFileStoragePath, "")
-	databaseDSN := flag.String(flagDatabaseDSN, defaultDatabaseDSN, "")
-	secretKey := flag.String(flagSecretKey, defaultSecretKey, "")
-	auditFile := flag.String(flagAuditFile, defaultAuditFile, "")
-	auditURL := flag.String(flagAuditURL, defaultAuditURL, "")
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	return NewWithFlagSet(fs, os.Args[1:])
+}
 
-	flag.Parse()
 
-	cfg := &Config{
+func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
+	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "")
+	baseURL := fs.String(flagBaseAddress, defaultBaseAddress, "")
+	logLevel := fs.String(flagLogLevel, defaultLogLevel, "")
+	filePath := fs.String(flagFileStoragePath, defaultFileStoragePath, "")
+	databaseDSN := fs.String(flagDatabaseDSN, defaultDatabaseDSN, "")
+	secretKey := fs.String(flagSecretKey, defaultSecretKey, "")
+	auditFile := fs.String(flagAuditFile, defaultAuditFile, "")
+	auditURL := fs.String(flagAuditURL, defaultAuditURL, "")
+
+	// Игнорируем ошибку парсинга, чтобы не падать на неизвестных флагах
+	_ = fs.Parse(args)
+
+	return &Config{
 		ServerAddress:   getParam(envServerAddress, *serverAddr),
 		BaseURL:         getParam(envBaseAddress, *baseURL),
 		LogLevel:        getParam(envLogLevel, *logLevel),
@@ -82,6 +81,12 @@ func New() *Config {
 		AuditFile:       getParam(envAuditFile, *auditFile),
 		AuditURL:        getParam(envAuditURL, *auditURL),
 	}
+}
 
-	return cfg
+// getParam возвращает значение из ENV, если оно задано, иначе из флагов.
+func getParam(envName, flagValue string) string {
+	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
+		return envValue
+	}
+	return flagValue
 }

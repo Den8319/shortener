@@ -24,7 +24,6 @@ func newTestStoreB(b *testing.B) *Store {
 	s, err := New(repo)
 	require.NoError(b, err)
 
-	
 	for i := 0; i < 100; i++ {
 		url := fmt.Sprintf("https://benchmark-test-url-%d.com", i)
 		_, err := s.GetShortURL(context.Background(), url, "benchmark-user")
@@ -35,8 +34,6 @@ func newTestStoreB(b *testing.B) *Store {
 		os.Remove(tmpFile.Name())
 		s.Close()
 	})
-
-
 
 	return s
 }
