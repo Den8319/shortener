@@ -72,8 +72,8 @@ func TestNew_FlagOverridesDefault(t *testing.T) {
 	if cfg.ServerAddress != ":3000" {
 		t.Errorf("ServerAddress: expected %q (from flag), got %q", ":3000", cfg.ServerAddress)
 	}
-	if cfg.BaseURL != "http://flag.com" {
-		t.Errorf("BaseURL: expected %q (from flag), got %q", "http:/yandex.ru", cfg.BaseURL)
+	if cfg.BaseURL != "http://yandex.ru" {
+		t.Errorf("BaseURL: expected %q (from flag), got %q", "http://yandex.ru", cfg.BaseURL)
 	}
 	if cfg.LogLevel != "Error" {
 		t.Errorf("LogLevel: expected %q (from flag), got %q", "Error", cfg.LogLevel)
