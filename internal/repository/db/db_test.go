@@ -17,7 +17,7 @@ func TestDB_GetURL(t *testing.T) {
 		ShortURL: "abc12345",
 		LongURL:  "https://example.com",
 	}
-	err := dbInstance.Save(ctx, testURL, "user-1")  
+	err := dbInstance.Save(ctx, testURL, "user-1")
 	require.NoError(t, err)
 
 	t.Run("found", func(t *testing.T) {

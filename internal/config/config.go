@@ -50,13 +50,11 @@ type Config struct {
 	AuditURL        string
 }
 
-
 func New() *Config {
 
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	return NewWithFlagSet(fs, os.Args[1:])
 }
-
 
 func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "")
