@@ -15,7 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Handler обрабатывает запросы на сокращение URL
+// Handler обрабатывает HTTP-запросы на сокращение URL, получение длинных URL по коротким и аудит операций.
+// Содержит обработчики для получения длинных URL по коротким и для сокращения URL в текстовом и JSON форматах.
 type Handler struct {
 	store     model.Storage
 	baseURL   string
@@ -35,6 +36,9 @@ func NewPingHandler(p model.Pinger) *PingHandler {
 	return &PingHandler{Pinger: p}
 }
 
+// HandlerGetDbPing проверяет доступность базы данных, выполняя ping-запрос.
+// Возвращает HTTP 200 OK при успешном подключении, HTTP 503 Service Unavailable если база не настроена,
+// и HTTP 500 Internal Server Error при ошибке подключения.
 func (h *PingHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
 	if h.Pinger == nil {
 		log.Warn().Msg("no pinger configured")
@@ -49,6 +53,9 @@ func (h *PingHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// GetURLHandler обрабатывает запросы на получение длинного URL по его короткому идентификатору.
+// Возвращает HTTP 307 Temporary Redirect с заголовком Location, указывающим на исходный URL.
+// При удалённой ссылке возвращает HTTP 410 Gone, а при отсутствии — HTTP 404 Not Found.
 func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
@@ -72,6 +79,10 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	h.logAudit("follow", getUser(r), longURL)
 }
 
+// ShortenTextHandler обрабатывает сокращение URL из текстового запроса.
+// Принимает длинный URL в теле запроса, возвращает полный короткий URL в текстовом формате.
+// При существующей ссылке возвращает HTTP 409 Conflict с уже существующим коротким URL,
+// при успешном сокращении — HTTP 201 Created.
 func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -129,6 +140,10 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	h.logAudit("shorten", userUUID, longURL)
 }
 
+// ShortenJSONHandler обрабатывает сокращение URL из JSON-запроса.
+// Принимает объект с полем LongURL в JSON-формате, возвращает объект с полем ShortURL в JSON-формате.
+// При существующей ссылке возвращает HTTP 409 Conflict с уже существующим коротким URL,
+// при успешном сокращении — HTTP 201 Created.
 func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	contentType := r.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "application/json") {
@@ -223,6 +238,8 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("sending HTTP 201 response")
 }
 
+// isValidURL проверяет, является ли строка корректным HTTP или HTTPS URL.
+// Возвращает true, если URL валиден (имеет схему http/https и хост), иначе false.
 func isValidURL(rawURL string) bool {
 	rawURL = strings.TrimSpace(rawURL)
 	if rawURL == "" {
@@ -245,6 +262,8 @@ func isValidURL(rawURL string) bool {
 	return true
 }
 
+// logAudit асинхронно отправляет событие аудита о действии пользователя (сокращение URL или переход по короткой ссылке).
+// Выполняется в отдельной горутине, чтобы не блокировать основной поток обработки запроса.
 func (h *Handler) logAudit(action, userID, url string) {
 	if h.auditor == nil {
 		return
