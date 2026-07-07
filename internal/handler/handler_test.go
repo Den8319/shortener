@@ -60,7 +60,7 @@ func Test_ShortenTextHandler(t *testing.T) {
 
 	// Создаём новое хранилище для каждого запуска
 	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key")
+	h := NewHandler(s, baseURL, "test-secret-key", nil)
 
 	// Маршрутизатор
 	route := chi.NewRouter()
@@ -176,7 +176,7 @@ func Test_ShortenJSONHandler(t *testing.T) {
 
 	// Создаем мок хранилища
 	s := newTestStore(t)
-	h := NewHandler(s, baseUrl, "test-secret-key")
+	h := NewHandler(s, baseUrl, "test-secret-key", nil)
 
 	route := chi.NewRouter()
 	route.Post("/api/shorten", h.ShortenJSONHandler)
@@ -307,7 +307,7 @@ func Test_GetURLHandler(t *testing.T) {
 	baseUrl := "https://short.ru"
 
 	s := newTestStore(t)
-	h := NewHandler(s, baseUrl, "test-secret-key")
+	h := NewHandler(s, baseUrl, "test-secret-key", nil)
 
 	shortURL, err := s.GetShortURL(context.Background(), longURL, "test-user-uuid")
 	require.NoError(t, err)

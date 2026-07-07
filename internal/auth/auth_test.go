@@ -9,15 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 const expire = time.Hour * 12
-
 
 func TestGetUser(t *testing.T) {
 
 	auth.Init("test_secret_key_123")
 
-	
 	tests := []struct {
 		name string // описание теста
 		auth string // значение токена (Auth)
@@ -68,14 +65,14 @@ func TestGetUser(t *testing.T) {
 			want: "",
 		},
 		{
-			name:  "пустой токен — должен вернуть пустую строку",
-			auth:  "",
-			want:  "",
+			name: "пустой токен — должен вернуть пустую строку",
+			auth: "",
+			want: "",
 		},
 		{
-			name:  "битой формат JWT — должен вернуть пустую строку",
-			auth:  "not_jwt",
-			want:  "",
+			name: "битой формат JWT — должен вернуть пустую строку",
+			auth: "not_jwt",
+			want: "",
 		},
 		{
 			name: "модифицированный токен — изменён payload — должен отклонить",

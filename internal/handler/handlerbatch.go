@@ -25,7 +25,7 @@ func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) 
 	// Тело запроса уже распаковано middleware
 
 	userUUID := getUser(r)
-	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	log.Info().Str("userUUID", userUUID).Msg("ShortenBatchHandler")
 	if userUUID == "" {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)

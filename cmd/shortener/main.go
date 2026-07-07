@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/Den8319/shortener/internal/audit"
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/compress"
 	"github.com/Den8319/shortener/internal/config"
@@ -13,7 +14,9 @@ import (
 	"github.com/Den8319/shortener/internal/repository/db"
 	"github.com/Den8319/shortener/internal/repository/file"
 	"github.com/Den8319/shortener/internal/service/store"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,7 +25,7 @@ func main() {
 
 	logger.InitLogger(cfg.LogLevel)
 	auth.Init(cfg.SecretKey)
-	
+
 	var loader model.Loader
 	var database *db.DB
 	if cfg.DatabaseDSN != "" {
@@ -59,12 +62,30 @@ func main() {
 	// Запуск worker'ов для асинхронного удаления URL
 	s.StartDeleter(ctx, 4)
 
-	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey)
+	// Создание auditor для аудита запросов
+	auditor := audit.NewAuditor()
+	if cfg.AuditFile != "" {
+		fileObserver, err := audit.NewFileObserver(cfg.AuditFile)
+		if err != nil {
+			log.Fatal().Err(err).Str("audit_file", cfg.AuditFile).Msg("failed to init file audit observer")
+		}
+		auditor.Register(fileObserver)
+		log.Info().Str("audit_file", cfg.AuditFile).Msg("file audit observer added")
+	}
+	if cfg.AuditURL != "" {
+		httpObserver := audit.NewHTTPObserver(cfg.AuditURL)
+		auditor.Register(httpObserver)
+		log.Info().Str("audit_url", cfg.AuditURL).Msg("HTTP audit observer added")
+	}
+
+	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
 
 	route := chi.NewRouter()
 	route.Use(logger.WithLogging)
 	route.Use(compress.WithCompression)
 	route.Use(auth.WithAuth)
+
+	route.Mount("/debug", middleware.Profiler())
 
 	route.Post("/", h.ShortenTextHandler)
 	route.Post("/api/shorten", h.ShortenJSONHandler)

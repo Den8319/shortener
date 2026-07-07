@@ -2,13 +2,41 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	file "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newTestStoreB(b *testing.B) *Store {
+	b.Helper()
+	tmpFile, err := os.CreateTemp("", "store-*.json")
+	require.NoError(b, err)
+	tmpFile.Close()
+
+	repo, err := file.New(tmpFile.Name())
+	require.NoError(b, err)
+	s, err := New(repo)
+	require.NoError(b, err)
+
+	for i := 0; i < 100; i++ {
+		url := fmt.Sprintf("https://benchmark-test-url-%d.com", i)
+		_, err := s.GetShortURL(context.Background(), url, "benchmark-user")
+		require.NoError(b, err)
+	}
+
+	b.Cleanup(func() {
+		os.Remove(tmpFile.Name())
+		s.Close()
+	})
+
+	return s
+}
 
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
@@ -44,7 +72,7 @@ func TestGetShortURL(t *testing.T) {
 
 			var shorts []string
 			for _, u := range tt.urls {
-				short, err := s.GetShortURL(context.Background(), u,"dfsfsdfsdfv")
+				short, err := s.GetShortURL(context.Background(), u, "dfsfsdfsdfv")
 				if tt.wantErr {
 					assert.Error(t, err)
 					return
@@ -76,7 +104,7 @@ func TestGetLongURL(t *testing.T) {
 			name:    "existing short returns long",
 			longURL: "https://example.com",
 			lookupFn: func(s *Store) string {
-				short, _ := s.GetShortURL(context.Background(), "https://example.com","dfsfsdfsdfv")
+				short, _ := s.GetShortURL(context.Background(), "https://example.com", "dfsfsdfsdfv")
 				return short
 			},
 			wantLong: "https://example.com",
@@ -106,5 +134,47 @@ func TestGetLongURL(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantLong, long)
 		})
+	}
+}
+
+func BenchmarkGetShortURL(b *testing.B) {
+	s := newTestStoreB(b)
+	baseURL := "https://example.com/test"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		url := baseURL + "-url-" + fmt.Sprintf("%d-%d", i, time.Now().UnixNano())
+		_, err := s.GetShortURL(context.Background(), url, "test-user")
+		if err != nil {
+			b.Errorf("GetShortURL() error = %v", err)
+		}
+	}
+}
+
+func BenchmarkGetLongURL(b *testing.B) {
+	s := newTestStoreB(b)
+	url := "https://example.com/test"
+	short, _ := s.GetShortURL(context.Background(), url, "test-user")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := s.GetLongURL(context.Background(), short)
+		if err != nil {
+			b.Errorf("GetLongURL() error = %v", err)
+		}
+	}
+}
+
+func BenchmarkFindOrGenerate(b *testing.B) {
+	s := newTestStoreB(b)
+	url := "https://example.com/test"
+
+	for i := 0; i < 100; i++ {
+		s.GetShortURL(context.Background(), url+"-"+string(rune('a'+i%26)), "test-user")
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = s.findOrGenerate(url)
 	}
 }
