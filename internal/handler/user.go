@@ -2,15 +2,17 @@ package handler
 
 import (
 	"encoding/json"
-	"net/http"
 	"fmt"
+	"net/http"
 
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/model"
 	"github.com/rs/zerolog/log"
 )
 
-// GetUserURLsHandler возвращает все сокращённые пользователем URL
+// GetUserURLsHandler возвращает все сокращённые пользователем URL в формате JSON.
+// Возвращает HTTP 200 OK со списком URL, HTTP 204 No Content если URL нет,
+// и HTTP 401 Unauthorized при отсутствии идентификатора пользователя.
 func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("GetUserURLsHandler")
 	// Получаем или создаем идентификатор пользователя
@@ -51,7 +53,8 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteURLsHandler асинхронно удаляет URL пользователя (gorutina запускается внутри DeleteURLs для каждой ссылки)
+// DeleteURLsHandler асинхронно удаляет URL пользователя.
+// Принимает массив идентификаторов коротких URL, возвращает HTTP 202 Accepted без ожидания завершения операции.
 func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 	// Получаем идентификатор пользователя
 	userID := getUser(r)
@@ -87,9 +90,11 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
+// getUser извлекает идентификатор пользователя из заголовка Auth HTTP-запроса.
+// Использует токен аутентификации для получения UUID пользователя.
 func getUser(r *http.Request) string {
-	
+
 	authCookie := r.Header.Get("Auth")
-	 	
+
 	return auth.GetUser(authCookie)
 }

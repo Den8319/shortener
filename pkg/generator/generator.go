@@ -5,8 +5,11 @@ import (
 	"math/big"
 )
 
+// alphabet — набор символов для генерации коротких URL (base64url-совместимый).
 const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 
+// GenerateShort генерирует случайную строку длины n из символов alphabet.
+// Использует crypto/rand для криптостойкой генерации.
 func GenerateShort(n int) (string, error) {
 	result := make([]byte, n)
 

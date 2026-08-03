@@ -1,3 +1,5 @@
+// Package store реализует сервис хранения сокращённых URL с кэшированием в памяти
+// и поддержкой персистентного хранилища через интерфейс model.Loader.
 package store
 
 import (
@@ -11,14 +13,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// shortURLLength длина генерируемого короткого URL
 const shortURLLength = 8
 
+// DeleteRequest запрос на асинхронное удаление URL.
 type DeleteRequest struct {
 	Context   context.Context
 	ShortURLs []string
 	UserID    string
 }
 
+// Store сервис хранения URL с кэшем в памяти.
 type Store struct {
 	urls          map[string]string
 	mu            sync.RWMutex
@@ -27,6 +32,7 @@ type Store struct {
 	deleteWorkers int
 }
 
+// New создаёт новый Store и загружает данные из loader.
 func New(loader model.Loader) (*Store, error) {
 	s := &Store{
 		urls:   make(map[string]string),
@@ -44,6 +50,8 @@ func New(loader model.Loader) (*Store, error) {
 	return s, nil
 }
 
+// GetShortURL возвращает или создаёт короткий URL для longURL.
+// Если URL уже существует, возвращает ErrURLAlreadyExists.
 func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string) (string, error) {
 	log.Info().Msg("GetShortURL")
 	s.mu.Lock()
@@ -76,6 +84,7 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 	return short, nil
 }
 
+// GetLongURL возвращает длинный URL по короткому идентификатору.
 func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	s.mu.RLock()
 	long, ok := s.urls[shortURL]
@@ -104,6 +113,7 @@ func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error)
 	return "", fmt.Errorf("short URL not found")
 }
 
+// Close закрывает хранилище и освобождает ресурсы.
 func (s *Store) Close() error {
 	if s.loader != nil {
 		return s.loader.Close()
@@ -111,6 +121,7 @@ func (s *Store) Close() error {
 	return nil
 }
 
+// findOrGenerate ищет существующий короткий URL или генерирует новый.
 func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err error) {
 	for sh, stored := range s.urls {
 		if stored == longURL {
@@ -124,6 +135,7 @@ func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err er
 	return short, true, nil
 }
 
+// GetShortList обрабатывает пакетный запрос на сокращение URL.
 func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem, userUUID string) ([]model.BatchResponseItem, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -161,6 +173,7 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 	return results, nil
 }
 
+// GetUserURLs возвращает все URL пользователя.
 func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
 	if s.loader == nil {
 		return nil, fmt.Errorf("loader is not initialized")
@@ -168,6 +181,7 @@ func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, 
 	return s.loader.GetUserURLs(ctx, userUUID)
 }
 
+// StartDeleter запускает пул воркеров для асинхронного удаления URL.
 func (s *Store) StartDeleter(ctx context.Context, workers int) {
 	s.deleteWorkers = workers
 	s.DeleteQueue = make(chan DeleteRequest, workers*2)
@@ -178,6 +192,7 @@ func (s *Store) StartDeleter(ctx context.Context, workers int) {
 	log.Info().Int("workers", workers).Msg("started delete workers")
 }
 
+// deleteWorker воркер, обрабатывающий запросы на удаление.
 func (s *Store) deleteWorker(ctx context.Context) {
 	for {
 		select {
@@ -190,6 +205,7 @@ func (s *Store) deleteWorker(ctx context.Context) {
 	}
 }
 
+// processDeleteRequest обрабатывает один запрос на удаление URL.
 func (s *Store) processDeleteRequest(req DeleteRequest) {
 	err := s.loader.Delete(context.Background(), req.ShortURLs, req.UserID)
 	if err != nil {
@@ -204,6 +220,8 @@ func (s *Store) processDeleteRequest(req DeleteRequest) {
 	s.mu.Unlock()
 }
 
+// DeleteURLs добавляет запрос на асинхронное удаление в очередь.
+// Перед вызовом необходимо запустить воркеры через StartDeleter.
 func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
 	if s.DeleteQueue == nil {
 		return fmt.Errorf("delete queue is not initialized, call StartDeleter first")

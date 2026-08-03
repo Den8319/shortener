@@ -61,7 +61,9 @@ func newCompressWriter(w http.ResponseWriter, r *http.Request) (*compressRespons
 	return cw, gzWriter, true
 }
 
-// WithCompression - middleware для сжатия HTTP-ответов
+// WithCompression — middleware для сжатия HTTP-ответов (gzip)
+// и декомпрессии входящих запросов с заголовком Content-Encoding: gzip.
+// Сжатие ответов применяется только для Content-Type: application/json и text/html.
 func WithCompression(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Info().

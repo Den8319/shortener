@@ -9,11 +9,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// DBHandler обрабатывает пакетное сокращение URL.
+// Предназначен для обработки множества URLs в одном запросе.
 type DBHandler struct {
 	store   model.Storage
 	baseURL string
 }
 
+// NewDBHandler создаёт новый DBHandler для пакетного сокращения URL.
 func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 	return &DBHandler{
 		store:   store,
@@ -21,11 +24,14 @@ func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 	}
 }
 
+// ShortenBatchHandler обрабатывает пакетное сокращение URL.
+// Принимает массив объектов с длинными URL, возвращает массив с короткими URL в формате JSON.
+// При успешном обрабатывании возвращает HTTP 201 Created.
 func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) {
 	// Тело запроса уже распаковано middleware
 
 	userUUID := getUser(r)
-	log.Info().Str("userUUID",userUUID).Msg("ShortenJSONHandler")
+	log.Info().Str("userUUID", userUUID).Msg("ShortenBatchHandler")
 	if userUUID == "" {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)

@@ -21,3 +21,13 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+# Profiling files
+
+*.mem
+*.cpu
+*.http
+
+profiles/*.mem
+profiles/*.cpu
+profiles/*.http
