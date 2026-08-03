@@ -11,8 +11,8 @@ const (
 	ContextValueUser = "User"
 )
 
-// generate:reset
 // URL представляет собой пару короткого и длинного URL, ассоциированную с пользователем.
+// generate:reset
 type URL struct {
 	ShortURL  string `json:"short_url"`
 	LongURL   string `json:"original_url"`
@@ -20,27 +20,27 @@ type URL struct {
 	IsDeleted bool   `json:"is_deleted,omitempty"`
 }
 
-// generate:reset
 // Request — тело запроса на сокращение URL в формате JSON.
+// generate:reset
 type Request struct {
 	LongURL string `json:"url"`
 }
 
-// generate:reset
 // Response — тело ответа на сокращение URL в формате JSON.
+// generate:reset
 type Response struct {
 	ShortURL string `json:"result"`
 }
 
-// generate:reset
 // BatchRequestItem — элемент пакетного запроса на сокращение URL.
+// generate:reset
 type BatchRequestItem struct {
 	Corr    string `json:"correlation_id"`
 	LongURL string `json:"original_url"`
 }
 
-// generate:reset
 // BatchResponseItem — элемент пакетного ответа с результатами сокращения URL.
+// generate:reset
 type BatchResponseItem struct {
 	Corr     string `json:"correlation_id"`
 	ShortURL string `json:"short_url"`

@@ -4,7 +4,9 @@ package noexit
 
 import (
 	"go/ast"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -22,10 +24,16 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
+	// Корневая директория проекта — текущая рабочая директория.
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, file := range pass.Files {
-		// Анализируем только файлы с именем main.go.
-		filename := filepath.Base(pass.Fset.Position(file.Pos()).Filename)
-		if filename != "main.go" {
+		// Анализируем только файлы, находящиеся внутри директории проекта.
+		filename := pass.Fset.Position(file.Pos()).Filename
+		if !isInDir(filename, wd) {
 			continue
 		}
 
@@ -65,4 +73,17 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	return nil, nil
+}
+
+// isInDir проверяет, что файл path находится внутри директории dir.
+func isInDir(path, dir string) bool {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(dir, abs)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
