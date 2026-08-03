@@ -14,15 +14,21 @@ const expire = time.Hour * 12
 
 var secretKey []byte // Хранит ключ из конфига
 
+// Init инициализирует пакет auth секретным ключом для подписи JWT-токенов.
+// Должна быть вызвана перед использованием WithAuth или GetUser.
 func Init(key string) {
 	secretKey = []byte(key)
 }
 
+// Claims — структура утверждений JWT-токена с добавлением поля User.
 type Claims struct {
 	jwt.RegisteredClaims
 	User string
 }
 
+// WithAuth — middleware для аутентификации HTTP-запросов.
+// Если кука Auth отсутствует или невалидна, создаёт новую пару кук (Auth, User).
+// Извлекает идентификатор пользователя из токена и устанавливает заголовок Auth и куку User.
 func WithAuth(h http.Handler) http.Handler {
 	log.Info().Msg("WithAuth started")
 	authFn := func(w http.ResponseWriter, r *http.Request) {
@@ -90,6 +96,8 @@ func newCookie(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("Auth", auth)
 }
 
+// GetUser извлекает идентификатор пользователя из JWT-токена.
+// Возвращает пустую строку, если токен невалиден или истёк.
 func GetUser(auth string) string {
 	claims := &Claims{}
 	if token, err := jwt.ParseWithClaims(auth, claims, func(token *jwt.Token) (any, error) {
@@ -101,9 +109,11 @@ func GetUser(auth string) string {
 	return claims.User
 }
 
+// TokenExpire — срок действия токена, создаваемого функцией GenerateToken.
 const TokenExpire = 24 * time.Hour
 
-// GenerateToken создаёт JWT-токен для пользователя
+// GenerateToken создаёт JWT-токен для пользователя с указанным ID и email.
+// Возвращает подписанную строку токена или ошибку подписи.
 func GenerateToken(userID, email string) (string, error) {
 	claims := Claims{
 		RegisteredClaims: jwt.RegisteredClaims{

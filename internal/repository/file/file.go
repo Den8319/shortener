@@ -36,6 +36,8 @@ type CachedRecord struct {
 	shortURLIndex map[string]int   // индекс shortURL → индекс в records
 }
 
+// Fileloader реализует интерфейс model.Loader для хранения данных в JSON-файле.
+// Поддерживает кэширование записей в памяти с TTL 5 секунд.
 type Fileloader struct {
 	filePath    string
 	file        *os.File
@@ -47,6 +49,8 @@ type Fileloader struct {
 
 var _ model.Loader = (*Fileloader)(nil)
 
+// New создаёт новый Fileloader, открывая файл для добавления записей.
+// Если файл не существует, он будет создан.
 func New(filePath string) (*Fileloader, error) {
 	f, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -60,6 +64,9 @@ func New(filePath string) (*Fileloader, error) {
 	}, nil
 }
 
+// Load читает все записи из файла и возвращает карту соответствия коротких URL длинным.
+// Использует кэш с TTL 5 секунд для ускорения повторных чтений.
+// Записи с флагом IsDeleted=true исключаются из результата.
 func (r *Fileloader) Load(ctx context.Context) (map[string]string, error) {
 	// Проверяем кэш
 	r.cacheMu.RLock()
@@ -128,24 +135,38 @@ func (r *Fileloader) Load(ctx context.Context) (map[string]string, error) {
 	return urls, nil
 }
 
+// Save записывает пару короткий/длинный URL в файл в формате JSON.
+// После записи сбрасывает кэш, чтобы при следующем чтении данные были актуальны.
 func (r *Fileloader) Save(ctx context.Context, url *model.URL, userUUID string) error {
-	return r.encoder.Encode(record{
+	if err := r.encoder.Encode(record{
 		UUID:      uuid.New(),
 		ShortURL:  url.ShortURL,
 		LongURL:   url.LongURL,
 		UserUUID:  userUUID,
 		IsDeleted: false,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to encode record: %w", err)
+	}
+
+	// Сбрасываем кэш, чтобы последующие чтения подтянули новые данные.
+	r.cacheMu.Lock()
+	r.cache = nil
+	r.cacheMu.Unlock()
+
+	return nil
 }
 
+// GetLongURL возвращает длинный URL по короткому идентификатору.
+// Сначала проверяет кэш, при промахе читает файл. Возвращает ErrURLDeleted для удалённых записей.
 func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	// Проверяем кэш
 	r.cacheMu.RLock()
-	if r.cache != nil && time.Since(r.cache.cacheTime) < cacheTTL {
-		idx, exists := r.cache.shortURLIndex[shortURL]
+	cache := r.cache
+	if cache != nil && time.Since(cache.cacheTime) < cacheTTL {
+		idx, exists := cache.shortURLIndex[shortURL]
 		r.cacheMu.RUnlock()
-		if exists && idx >= 0 && idx < len(r.cache.records) {
-			rec := r.cache.records[idx]
+		if exists && idx >= 0 && idx < len(cache.records) {
+			rec := cache.records[idx]
 			if rec.ShortURL == shortURL {
 				if rec.IsDeleted {
 					return "", model.ErrURLDeleted
@@ -189,17 +210,21 @@ func (r *Fileloader) GetLongURL(ctx context.Context, shortURL string) (string, e
 	return "", fmt.Errorf("url not found")
 }
 
+// GetUserURLs возвращает все URL, созданные указанным пользователем.
+// Использует кэш с индексом по userUUID для ускорения поиска.
+// Удалённые записи (IsDeleted=true) исключаются из результата.
 func (r *Fileloader) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
 	// Проверяем кэш
 	r.cacheMu.RLock()
-	if r.cache != nil && time.Since(r.cache.cacheTime) < cacheTTL {
-		indices, exists := r.cache.userIndex[userUUID]
+	cache := r.cache
+	if cache != nil && time.Since(cache.cacheTime) < cacheTTL {
+		indices, exists := cache.userIndex[userUUID]
 		r.cacheMu.RUnlock()
 		if exists {
 			var urls []model.URL
 			for _, idx := range indices {
-				if idx >= 0 && idx < len(r.cache.records) {
-					rec := r.cache.records[idx]
+				if idx >= 0 && idx < len(cache.records) {
+					rec := cache.records[idx]
 					if !rec.IsDeleted {
 						urls = append(urls, model.URL{ShortURL: rec.ShortURL, LongURL: rec.LongURL})
 					}
@@ -241,10 +266,12 @@ func (r *Fileloader) GetUserURLs(ctx context.Context, userUUID string) ([]model.
 	return urls, nil
 }
 
+// Close закрывает файл, открытый для записи.
 func (r *Fileloader) Close() error {
 	return r.file.Close()
 }
 
+// Delete не поддерживается в файловом хранилище и всегда возвращает ошибку.
 func (r *Fileloader) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
 	return errors.New("unsupport")
 }

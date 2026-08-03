@@ -47,6 +47,7 @@ func main() {
 
 	// 7. Создание аудитора
 	auditor := initAuditor(cfg)
+	defer auditor.Close()
 
 	// 8. Создание обработчиков и настройка маршрутов
 	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)

@@ -15,6 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// New создаёт новое подключение к PostgreSQL, проверяет его доступность через Ping.
+// Парсит DSN и возвращает ошибку при неверном формате или недоступности БД.
 func New(ctx context.Context, dsn string) (*DB, error) {
 	if _, err := pgx.ParseConfig(dsn); err != nil {
 		return nil, fmt.Errorf("invalid dsn: %w", err)
@@ -35,10 +37,12 @@ func New(ctx context.Context, dsn string) (*DB, error) {
 	}, nil
 }
 
+// Ping проверяет доступность подключения к базе данных.
 func (db *DB) Ping(ctx context.Context) error {
 	return db.conn.PingContext(ctx)
 }
 
+// Migrate применяет все миграции из директории migrations/ с помощью goose.
 func (db *DB) Migrate(ctx context.Context) error {
 	if err := db.Ping(ctx); err != nil {
 		return fmt.Errorf("failed to ping database before migration: %w", err)
@@ -97,6 +101,9 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 	return shortURL, nil
 }
 
+// Save сохраняет пару короткий/длинный URL в базу данных для указанного пользователя.
+// Если короткий URL уже существует (ON CONFLICT), возвращает ErrURLAlreadyExists
+// и заполняет поле ShortURL существующим значением.
 func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
 	query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
 
@@ -141,10 +148,13 @@ func (db *DB) GetLong(ctx context.Context, conn Connector, shortURL string) (str
 	return longURL, nil
 }
 
+// Close закрывает подключение к базе данных.
 func (db *DB) Close() error {
 	return db.conn.Close()
 }
 
+// GetUserURLs возвращает все URL, созданные указанным пользователем.
+// Результат содержит пары короткий/длинный URL без добавления базового адреса.
 func (db *DB) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, error) {
 	if err := db.Ping(ctx); err != nil {
 		return nil, err
@@ -172,6 +182,9 @@ func (db *DB) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, er
 	return urls, nil
 }
 
+// Delete выполняет мягкое удаление (soft delete) URL по списку коротких идентификаторов
+// для указанного пользователя. Устанавливает флаг b_deleted = true.
+// Проверяет, что удаляемые URL принадлежат переданному пользователю.
 func (db *DB) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
 
 	log.Info().Int("count", len(shortURLs)).Str("user_id", userUUID).Msg("starting soft delete batch")

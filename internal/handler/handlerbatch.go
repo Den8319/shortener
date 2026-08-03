@@ -16,6 +16,7 @@ type DBHandler struct {
 	baseURL string
 }
 
+// NewDBHandler создаёт новый DBHandler для пакетного сокращения URL.
 func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 	return &DBHandler{
 		store:   store,

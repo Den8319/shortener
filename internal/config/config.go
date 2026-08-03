@@ -39,6 +39,9 @@ const (
 	defaultAuditURL = ""
 )
 
+// Config содержит все параметры конфигурации приложения.
+// Значения читаются из переменных окружения, а при их отсутствии — из флагов командной строки.
+// Если не задано ни то, ни другое, используются значения по умолчанию.
 type Config struct {
 	ServerAddress   string
 	BaseURL         string
@@ -50,12 +53,15 @@ type Config struct {
 	AuditURL        string
 }
 
+// New создаёт Config, читая флаги из os.Args[1:].
 func New() *Config {
 
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	return NewWithFlagSet(fs, os.Args[1:])
 }
 
+// NewWithFlagSet создаёт Config из указанного FlagSet и аргументов.
+// Используется в тестах для передачи произвольных флагов.
 func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "")
 	baseURL := fs.String(flagBaseAddress, defaultBaseAddress, "")

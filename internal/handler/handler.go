@@ -24,14 +24,17 @@ type Handler struct {
 	auditor   *audit.Auditor
 }
 
+// PingHandler — обработчик для проверки доступности базы данных.
 type PingHandler struct {
 	model.Pinger
 }
 
+// NewHandler создаёт новый Handler с указанным хранилищем, базовым URL, секретным ключом и аудитором.
 func NewHandler(store model.Storage, baseURL string, secretKey string, auditor *audit.Auditor) *Handler {
 	return &Handler{store: store, baseURL: baseURL, secretKey: secretKey, auditor: auditor}
 }
 
+// NewPingHandler создаёт новый PingHandler для проверки доступности базы данных.
 func NewPingHandler(p model.Pinger) *PingHandler {
 	return &PingHandler{Pinger: p}
 }
