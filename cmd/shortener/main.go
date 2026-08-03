@@ -132,7 +132,7 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 	// Маршруты только для БД
 	if cfg.DatabaseDSN != "" && database != nil {
 		hp := handler.NewPingHandler(database)
-		route.Get("/ping", hp.HandlerGetDbPing)
+		route.Get("/ping", hp.HandlerGetDBPing)
 
 		dbh := handler.NewDBHandler(s, cfg.BaseURL)
 		route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)

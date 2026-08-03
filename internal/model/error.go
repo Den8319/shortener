@@ -1,3 +1,4 @@
+// Package model содержит типы данных, интерфейсы и ошибки, используемые в проекте.
 package model
 
 import "errors"

@@ -1,3 +1,4 @@
+// Package handler содержит HTTP-обработчики для API сокращения URL.
 package handler
 
 import (

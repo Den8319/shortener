@@ -1,3 +1,4 @@
+// Package file реализует хранилище URL в JSON-файле с кэшированием в памяти.
 package file
 
 import (

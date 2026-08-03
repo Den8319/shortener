@@ -1,3 +1,6 @@
+// Package audit реализует систему аудита действий пользователей с использованием
+// паттерна наблюдатель (Observer). Поддерживает запись событий в файл и отправку
+// по HTTP.
 package audit
 
 import (
@@ -14,10 +17,10 @@ import (
 
 // AuditEvent представляет собой событие аудита.
 type AuditEvent struct {
-	Ts     int64  `json:"ts"`      // Unix timestamp события
-	Action string `json:"action"`  // Действие: "shorten" или "follow"
-	UserID string `json:"user_id"` // Идентификатор пользователя
-	URL    string `json:"url"`     // Оригинальный URL
+	Timestamp int64  `json:"ts"`      // Unix timestamp события
+	Action    string `json:"action"`  // Действие: "shorten" или "follow"
+	UserID    string `json:"user_id"` // Идентификатор пользователя
+	URL       string `json:"url"`     // Оригинальный URL
 }
 
 // Observer — интерфейс наблюдателя для получения событий аудита.
@@ -97,7 +100,11 @@ func (ho *HTTPObserver) Notify(event AuditEvent) error {
 	if err != nil {
 		return fmt.Errorf("http observer request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Error().Err(closeErr).Msg("[Audit Error] failed to close response body")
+		}
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("http observer got unexpected status: %d", resp.StatusCode)

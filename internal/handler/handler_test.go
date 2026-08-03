@@ -582,7 +582,7 @@ func Test_ShortenBatchHandler(t *testing.T) {
 }
 
 // ============================================================
-// Тесты для HandlerGetDbPing (НОВЫЕ)
+// Тесты для HandlerGetDBPing (НОВЫЕ)
 // ============================================================
 
 // mockPinger - мок для тестирования PingHandler
@@ -594,14 +594,14 @@ func (m *mockPinger) Ping(ctx context.Context) error {
 	return m.err
 }
 
-func Test_HandlerGetDbPing(t *testing.T) {
+func Test_HandlerGetDBPing(t *testing.T) {
 	t.Run("success - ping ok", func(t *testing.T) {
 		h := NewPingHandler(&mockPinger{err: nil})
 
 		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 		w := httptest.NewRecorder()
 
-		h.HandlerGetDbPing(w, req)
+		h.HandlerGetDBPing(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
@@ -612,7 +612,7 @@ func Test_HandlerGetDbPing(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 		w := httptest.NewRecorder()
 
-		h.HandlerGetDbPing(w, req)
+		h.HandlerGetDBPing(w, req)
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
@@ -623,7 +623,7 @@ func Test_HandlerGetDbPing(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/ping", nil)
 		w := httptest.NewRecorder()
 
-		h.HandlerGetDbPing(w, req)
+		h.HandlerGetDBPing(w, req)
 
 		assert.Equal(t, http.StatusServiceUnavailable, w.Code)
 	})

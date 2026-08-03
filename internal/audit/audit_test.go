@@ -36,6 +36,32 @@ func (m *MockObserver) GetEvents() []AuditEvent {
 	return m.events
 }
 
+// MockCloserObserver — наблюдатель, реализующий интерфейс Closer для тестирования Auditor.Close().
+type MockCloserObserver struct {
+	MockObserver
+	closed bool
+}
+
+func (m *MockCloserObserver) Close() error {
+	m.closed = true
+	return nil
+}
+
+// Аудитор закрывает всех наблюдателей, реализующих Closer
+func TestAuditor_Close_ClosesAllClosers(t *testing.T) {
+	auditor := NewAuditor()
+	closer1 := &MockCloserObserver{}
+	closer2 := &MockCloserObserver{}
+
+	auditor.Register(closer1)
+	auditor.Register(closer2)
+
+	err := auditor.Close()
+	require.NoError(t, err)
+	assert.True(t, closer1.closed)
+	assert.True(t, closer2.closed)
+}
+
 // Аудитор отправляет события всем наблюдателям
 func TestAuditor_Notify_DispatchesToAllObservers(t *testing.T) {
 	auditor := NewAuditor()
@@ -46,10 +72,10 @@ func TestAuditor_Notify_DispatchesToAllObservers(t *testing.T) {
 	auditor.Register(mock2)
 
 	event := AuditEvent{
-		Ts:     time.Now().Unix(),
-		Action: "shorten",
-		UserID: "user_123",
-		URL:    "https://example.com",
+		Timestamp: time.Now().Unix(),
+		Action:    "shorten",
+		UserID:    "user_123",
+		URL:       "https://example.com",
 	}
 
 	auditor.Notify(event)
@@ -63,10 +89,10 @@ func TestAuditor_Notify_DispatchesToAllObservers(t *testing.T) {
 // Тест для HTTPObserver
 func TestHTTPObserver_Notify_TableDriven(t *testing.T) {
 	sampleEvent := AuditEvent{
-		Ts:     1700000000,
-		Action: "follow",
-		UserID: "user_789",
-		URL:    "https://github.com",
+		Timestamp: 1700000000,
+		Action:    "follow",
+		UserID:    "user_789",
+		URL:       "https://github.com",
 	}
 
 	tests := []struct {
@@ -141,18 +167,14 @@ func TestFileObserver_Notify_WritesValidJSONLines(t *testing.T) {
 	require.NoError(t, err)
 	defer fo.Close()
 
-	event1 := AuditEvent{Ts: 111, Action: "GetShort", UserID: "u1"}
-	event2 := AuditEvent{Ts: 222, Action: "GetLong", UserID: "u2"}
+	event1 := AuditEvent{Timestamp: 111, Action: "GetShort", UserID: "u1"}
+	event2 := AuditEvent{Timestamp: 222, Action: "GetLong", UserID: "u2"}
 
 	require.NoError(t, fo.Notify(event1))
 	require.NoError(t, fo.Notify(event2))
 
-	fileBytes, err := os.ReadFile(tmpFile.Name())
-	require.NoError(t, err)
-
 	var decoded1, decoded2 AuditEvent
 
-	err = json.Unmarshal(fileBytes, &decoded1)
 	f, err := os.Open(tmpFile.Name())
 	require.NoError(t, err)
 	defer f.Close()
