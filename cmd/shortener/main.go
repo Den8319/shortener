@@ -28,7 +28,7 @@ var (
 )
 
 func main() {
-	
+
 	fmt.Println("Build version:", buildVersion)
 	fmt.Println("Build date:", buildDate)
 	fmt.Println("Build commit:", buildCommit)
