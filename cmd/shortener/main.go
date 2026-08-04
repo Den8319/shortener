@@ -13,6 +13,8 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Den8319/shortener/internal/audit"
@@ -43,16 +45,16 @@ func main() {
 	fmt.Println("Build date:", buildDate)
 	fmt.Println("Build commit:", buildCommit)
 
-	// 1. Загрузка конфигурации
+	// 1. Контекст с сигналами для graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	// 2. Загрузка конфигурации
 	cfg := config.New()
 
-	// 2. Инициализация логгера и аутентификации
+	// 3. Инициализация логгера и аутентификации
 	logger.InitLogger(cfg.LogLevel)
 	auth.Init(cfg.SecretKey)
-
-	// 3. Создание контекста (нужен для воркеров удаления)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// 4. Создание загрузчика данных (БД или файл)
 	loader, database := createLoader(ctx, cfg)
@@ -62,26 +64,26 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to init store")
 	}
-	defer s.Close()
 
-	// 6. Запуск воркеров для асинхронного удаления URL
-	s.StartDeleter(ctx, 4)
-
-	// 7. Создание аудитора
+	// 6. Создание аудитора
 	auditor := initAuditor(cfg)
-	defer auditor.Close()
+
+	// 7. Запуск воркеров для асинхронного удаления URL
+	//    Воркеры завершаются через CloseDeleter() после остановки HTTP-сервера.
+	s.StartDeleter(4)
 
 	// 8. Создание обработчиков и настройка маршрутов
 	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
 	route := setupRoutes(h, database, cfg, s)
 
-	// 9. Запуск сервера
+	// 9. Создание HTTP-сервера
+	server := &http.Server{
+		Addr:    cfg.ServerAddress,
+		Handler: route,
+	}
+
 	if cfg.EnableHTTPS {
 		log.Info().Str("addr", cfg.ServerAddress).Msg("server started with TLS")
-		server := &http.Server{
-			Addr:    cfg.ServerAddress,
-			Handler: route,
-		}
 
 		certificates, err := makeCertificate()
 		if err != nil {
@@ -91,15 +93,48 @@ func main() {
 			Certificates: certificates,
 		}
 
-		if err := server.ListenAndServeTLS("", ""); err != nil {
-			log.Fatal().Err(err).Msg("server stopped")
-		}
+		go func() {
+			if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				log.Fatal().Err(err).Msg("server stopped unexpectedly")
+			}
+		}()
 	} else {
 		log.Info().Str("addr", cfg.ServerAddress).Msg("server started")
-		if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
-			log.Fatal().Err(err).Msg("server stopped")
-		}
+
+		go func() {
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatal().Err(err).Msg("server stopped unexpectedly")
+			}
+		}()
 	}
+
+	// 10. Ожидание сигнала завершения
+	<-ctx.Done()
+	log.Info().Msg("shutting down server (signal received)")
+
+	// 11. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("server forced to shutdown")
+	}
+
+	// 12. Останавливаем воркеры удаления.
+
+	s.CloseDeleter()
+
+	// 13. Закрываем хранилище
+	if err := s.Close(); err != nil {
+		log.Error().Err(err).Msg("failed to close store")
+	}
+
+	// 14. Закрываем аудитора
+	if err := auditor.Close(); err != nil {
+		log.Error().Err(err).Msg("failed to close auditor")
+	}
+
+	log.Info().Msg("server stopped gracefully")
 }
 
 // createLoader создаёт загрузчик данных (БД или файл)

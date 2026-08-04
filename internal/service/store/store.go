@@ -30,6 +30,7 @@ type Store struct {
 	loader        model.Loader
 	DeleteQueue   chan DeleteRequest
 	deleteWorkers int
+	deleteWg      sync.WaitGroup
 }
 
 // New создаёт новый Store и загружает данные из loader.
@@ -182,27 +183,34 @@ func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, 
 }
 
 // StartDeleter запускает пул воркеров для асинхронного удаления URL.
-func (s *Store) StartDeleter(ctx context.Context, workers int) {
+// Воркеры завершаются при закрытии канала DeleteQueue (через CloseDeleter).
+func (s *Store) StartDeleter(workers int) {
 	s.deleteWorkers = workers
 	s.DeleteQueue = make(chan DeleteRequest, workers*2)
+	s.deleteWg.Add(workers)
 
-	for i := 0; i < workers; i++ {
-		go s.deleteWorker(ctx)
+	for range workers {
+		go s.deleteWorker()
 	}
 	log.Info().Int("workers", workers).Msg("started delete workers")
 }
 
-// deleteWorker воркер, обрабатывающий запросы на удаление.
-func (s *Store) deleteWorker(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info().Msg("delete worker shutting down")
-			return
-		case req := <-s.DeleteQueue:
-			s.processDeleteRequest(req)
-		}
+// CloseDeleter закрывает канал очереди удаления и ожидает завершения воркеров.
+func (s *Store) CloseDeleter() {
+	if s.DeleteQueue == nil {
+		return
 	}
+	close(s.DeleteQueue)
+	s.deleteWg.Wait()
+}
+
+// deleteWorker воркер, обрабатывающий запросы на удаление.
+func (s *Store) deleteWorker() {
+	defer s.deleteWg.Done()
+	for req := range s.DeleteQueue {
+		s.processDeleteRequest(req)
+	}
+	log.Info().Msg("delete worker shutting down")
 }
 
 // processDeleteRequest обрабатывает один запрос на удаление URL.

@@ -101,15 +101,13 @@ func TestPool_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	workers := 100
 
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range workers {
+		wg.Go(func() {
 			item := p.Get()
 			item.val = 777
 			item.str = "concurrent"
 			p.Put(item)
-		}()
+		})
 	}
 
 	wg.Wait()
