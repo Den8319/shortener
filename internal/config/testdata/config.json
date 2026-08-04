@@ -1,0 +1,11 @@
+{
+    "server_address": "localhost:9090",
+    "base_url": "http://json-config.com",
+    "file_storage_path": "/path/to/file.db",
+    "database_dsn": "",
+    "enable_https": true,
+    "log_level": "Debug",
+    "secret_key": "json-secret",
+    "audit_file": "/tmp/audit.log",
+    "audit_url": "http://audit.example.com"
+}

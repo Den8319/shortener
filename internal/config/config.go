@@ -1,10 +1,20 @@
-// Package config реализует загрузку конфигурации приложения из переменных
-// окружения и флагов командной строки.
+// Package config реализует загрузку конфигурации приложения из JSON-файла,
+// переменных окружения и флагов командной строки.
+//
+// Приоритет значений (от высшего к низшему):
+//  1. Переменные окружения
+//  2. Флаги командной строки (если заданы явно)
+//  3. JSON-файл конфигурации
+//  4. Значения по умолчанию
 package config
 
 import (
+	"cmp"
+	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
+	"strconv"
 )
 
 const (
@@ -43,7 +53,24 @@ const (
 	envEnableHTTPS     = "ENABLE_HTTPS"
 	flagEnableHTTPS    = "s"
 	defaultEnableHTTPS = false
+
+	envConfig     = "CONFIG"
+	flagConfig    = "c"
+	flagConfigAlt = "config"
 )
+
+// jsonConfigFile отражает структуру JSON-файла конфигурации.
+type jsonConfigFile struct {
+	ServerAddress   *string `json:"server_address"`
+	BaseURL         *string `json:"base_url"`
+	FileStoragePath *string `json:"file_storage_path"`
+	DatabaseDSN     *string `json:"database_dsn"`
+	EnableHTTPS     *bool   `json:"enable_https"`
+	LogLevel        *string `json:"log_level"`
+	SecretKey       *string `json:"secret_key"`
+	AuditFile       *string `json:"audit_file"`
+	AuditURL        *string `json:"audit_url"`
+}
 
 // Config содержит все параметры конфигурации приложения.
 // Значения читаются из переменных окружения, а при их отсутствии — из флагов командной строки.
@@ -62,7 +89,6 @@ type Config struct {
 
 // New создаёт Config, читая флаги из os.Args[1:].
 func New() *Config {
-
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	return NewWithFlagSet(fs, os.Args[1:])
 }
@@ -70,45 +96,103 @@ func New() *Config {
 // NewWithFlagSet создаёт Config из указанного FlagSet и аргументов.
 // Используется в тестах для передачи произвольных флагов.
 func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
-	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "")
-	baseURL := fs.String(flagBaseAddress, defaultBaseAddress, "")
-	logLevel := fs.String(flagLogLevel, defaultLogLevel, "")
-	filePath := fs.String(flagFileStoragePath, defaultFileStoragePath, "")
-	databaseDSN := fs.String(flagDatabaseDSN, defaultDatabaseDSN, "")
-	secretKey := fs.String(flagSecretKey, defaultSecretKey, "")
-	auditFile := fs.String(flagAuditFile, defaultAuditFile, "")
-	auditURL := fs.String(flagAuditURL, defaultAuditURL, "")
-	enableHTTPS := fs.Bool(flagEnableHTTPS, defaultEnableHTTPS, "")
+	// Объявляем флаги с настоящими значениями по умолчанию, чтобы -h
+	// показывал корректную справку. Явность флага определяем через fs.Visit.
+	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "HTTP server address")
+	baseURL := fs.String(flagBaseAddress, defaultBaseAddress, "base URL for shortened links")
+	logLevel := fs.String(flagLogLevel, defaultLogLevel, "log level (Debug, Info, Warn, Error)")
+	filePath := fs.String(flagFileStoragePath, defaultFileStoragePath, "path to file storage")
+	databaseDSN := fs.String(flagDatabaseDSN, defaultDatabaseDSN, "database DSN")
+	secretKey := fs.String(flagSecretKey, defaultSecretKey, "secret key for signing")
+	auditFile := fs.String(flagAuditFile, defaultAuditFile, "audit log file path")
+	auditURL := fs.String(flagAuditURL, defaultAuditURL, "audit log server URL")
+	enableHTTPS := fs.Bool(flagEnableHTTPS, defaultEnableHTTPS, "enable HTTPS")
+	var cfgPath string
+	fs.StringVar(&cfgPath, flagConfig, "", "path to JSON config file")
+	fs.StringVar(&cfgPath, flagConfigAlt, "", "path to JSON config file (alias for -c)")
 
-	// Игнорируем ошибку парсинга, чтобы не падать на неизвестных флагах
+	// Парсим флаги.
 	_ = fs.Parse(args)
 
-	return &Config{
-		ServerAddress:   getParam(envServerAddress, *serverAddr),
-		BaseURL:         getParam(envBaseAddress, *baseURL),
-		LogLevel:        getParam(envLogLevel, *logLevel),
-		FileStoragePath: getParam(envFileStoragePath, *filePath),
-		DatabaseDSN:     getParam(envDatabaseDSN, *databaseDSN),
-		SecretKey:       getParam(envSecretKey, *secretKey),
-		AuditFile:       getParam(envAuditFile, *auditFile),
-		AuditURL:        getParam(envAuditURL, *auditURL),
-		EnableHTTPS:     getBoolParam(envEnableHTTPS, *enableHTTPS),
+	// Собираем множество явно указанных флагов.
+	explicitFlags := make(map[string]bool)
+	fs.Visit(func(f *flag.Flag) {
+		explicitFlags[f.Name] = true
+	})
+
+	// Конфигурационный файл — из флага или ENV.
+	if !explicitFlags[flagConfig] && !explicitFlags[flagConfigAlt] {
+		if envVal, ok := os.LookupEnv(envConfig); ok && envVal != "" {
+			cfgPath = envVal
+		}
 	}
+
+	// Загружаем JSON-файл, если указан.
+	jsonCfg := &jsonConfigFile{}
+	if cfgPath != "" {
+		jsonCfg = loadJSONConfig(cfgPath)
+	}
+
+	// Формируем итоговую конфигурацию.
+	cfg := &Config{
+		ServerAddress:   resolveString(envServerAddress, *serverAddr, explicitFlags[flagServerAddress], jsonCfg.ServerAddress, defaultServerAddress),
+		BaseURL:         resolveString(envBaseAddress, *baseURL, explicitFlags[flagBaseAddress], jsonCfg.BaseURL, defaultBaseAddress),
+		LogLevel:        resolveString(envLogLevel, *logLevel, explicitFlags[flagLogLevel], jsonCfg.LogLevel, defaultLogLevel),
+		FileStoragePath: resolveString(envFileStoragePath, *filePath, explicitFlags[flagFileStoragePath], jsonCfg.FileStoragePath, defaultFileStoragePath),
+		DatabaseDSN:     resolveString(envDatabaseDSN, *databaseDSN, explicitFlags[flagDatabaseDSN], jsonCfg.DatabaseDSN, defaultDatabaseDSN),
+		SecretKey:       resolveString(envSecretKey, *secretKey, explicitFlags[flagSecretKey], jsonCfg.SecretKey, defaultSecretKey),
+		AuditFile:       resolveString(envAuditFile, *auditFile, explicitFlags[flagAuditFile], jsonCfg.AuditFile, defaultAuditFile),
+		AuditURL:        resolveString(envAuditURL, *auditURL, explicitFlags[flagAuditURL], jsonCfg.AuditURL, defaultAuditURL),
+		EnableHTTPS:     resolveBool(envEnableHTTPS, *enableHTTPS, explicitFlags[flagEnableHTTPS], jsonCfg.EnableHTTPS, defaultEnableHTTPS),
+	}
+
+	return cfg
 }
 
-// getParam возвращает значение из ENV, если оно задано, иначе из флагов.
-func getParam(envName, flagValue string) string {
-	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
-		return envValue
+// loadJSONConfig читает и парсит JSON-файл конфигурации.
+// При ошибке чтения или парсинга возвращает пустую структуру и
+// выводит предупреждение в stderr.
+func loadJSONConfig(path string) *jsonConfigFile {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: cannot read config file %s: %v\n", path, err)
+		return &jsonConfigFile{}
 	}
-	return flagValue
+	var cfg jsonConfigFile
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: cannot parse config file %s: %v\n", path, err)
+		return &jsonConfigFile{}
+	}
+	return &cfg
 }
 
-// getBoolParam возвращает true, если ENV-переменная установлена в "true" или "1",
-// иначе возвращает значение из флага.
-func getBoolParam(envName string, flagValue bool) bool {
-	if envValue, exists := os.LookupEnv(envName); exists {
-		return envValue == "true" || envValue == "1"
+// resolveString возвращает значение по цепочке приоритетов:
+// ENV > явный флаг > JSON-файл > значение по умолчанию.
+func resolveString(envName, flagValue string, flagSet bool, jsonValue *string, defaultValue string) string {
+	flagVal := ""
+	if flagSet {
+		flagVal = flagValue
 	}
-	return flagValue
+	jsonVal := ""
+	if jsonValue != nil {
+		jsonVal = *jsonValue
+	}
+	return cmp.Or(os.Getenv(envName), flagVal, jsonVal, defaultValue)
+}
+
+// resolveBool возвращает bool по цепочке приоритетов:
+// ENV > явный флаг > JSON-файл > значение по умолчанию.
+func resolveBool(envName string, flagValue bool, flagSet bool, jsonValue *bool, defaultValue bool) bool {
+	if envVal, ok := os.LookupEnv(envName); ok {
+		if b, err := strconv.ParseBool(envVal); err == nil {
+			return b
+		}
+	}
+	if flagSet {
+		return flagValue
+	}
+	if jsonValue != nil {
+		return *jsonValue
+	}
+	return defaultValue
 }
