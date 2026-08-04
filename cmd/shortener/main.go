@@ -1,9 +1,19 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
+	"math/big"
+	"net"
 	"net/http"
+	"time"
 
 	"github.com/Den8319/shortener/internal/audit"
 	"github.com/Den8319/shortener/internal/auth"
@@ -66,9 +76,29 @@ func main() {
 	route := setupRoutes(h, database, cfg, s)
 
 	// 9. Запуск сервера
-	log.Info().Str("addr", cfg.ServerAddress).Msg("server started")
-	if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
-		log.Fatal().Err(err).Msg("server stopped")
+	if cfg.EnableHTTPS {
+		log.Info().Str("addr", cfg.ServerAddress).Msg("server started with TLS")
+		server := &http.Server{
+			Addr:    cfg.ServerAddress,
+			Handler: route,
+		}
+
+		certificates, err := makeCertificate()
+		if err != nil {
+			log.Fatal().Err(err).Msg("failed to create TLS certificate")
+		}
+		server.TLSConfig = &tls.Config{
+			Certificates: certificates,
+		}
+
+		if err := server.ListenAndServeTLS("", ""); err != nil {
+			log.Fatal().Err(err).Msg("server stopped")
+		}
+	} else {
+		log.Info().Str("addr", cfg.ServerAddress).Msg("server started")
+		if err := http.ListenAndServe(cfg.ServerAddress, route); err != nil {
+			log.Fatal().Err(err).Msg("server stopped")
+		}
 	}
 }
 
@@ -153,4 +183,54 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 	}
 
 	return route
+}
+
+// makeCertificate создаёт self-signed TLS-сертификат для localhost.
+func makeCertificate() ([]tls.Certificate, error) {
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(1658),
+		Subject: pkix.Name{
+			Organization: []string{"Yandex.Praktikum"},
+			Country:      []string{"RU"},
+		},
+		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return nil, err
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	var certPEM bytes.Buffer
+	if err = pem.Encode(&certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	}); err != nil {
+		return nil, err
+	}
+
+	var privateKeyPEM bytes.Buffer
+	if err = pem.Encode(&privateKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
+	}); err != nil {
+		return nil, err
+	}
+
+	certPair, err := tls.X509KeyPair(certPEM.Bytes(), privateKeyPEM.Bytes())
+	if err != nil {
+		return nil, err
+	}
+
+	return []tls.Certificate{certPair}, nil
 }

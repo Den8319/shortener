@@ -39,6 +39,10 @@ const (
 	envAuditURL     = "AUDIT_URL"
 	flagAuditURL    = "audit-url"
 	defaultAuditURL = ""
+
+	envEnableHTTPS     = "ENABLE_HTTPS"
+	flagEnableHTTPS    = "s"
+	defaultEnableHTTPS = false
 )
 
 // Config содержит все параметры конфигурации приложения.
@@ -53,6 +57,7 @@ type Config struct {
 	SecretKey       string
 	AuditFile       string
 	AuditURL        string
+	EnableHTTPS     bool
 }
 
 // New создаёт Config, читая флаги из os.Args[1:].
@@ -73,6 +78,7 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	secretKey := fs.String(flagSecretKey, defaultSecretKey, "")
 	auditFile := fs.String(flagAuditFile, defaultAuditFile, "")
 	auditURL := fs.String(flagAuditURL, defaultAuditURL, "")
+	enableHTTPS := fs.Bool(flagEnableHTTPS, defaultEnableHTTPS, "")
 
 	// Игнорируем ошибку парсинга, чтобы не падать на неизвестных флагах
 	_ = fs.Parse(args)
@@ -86,6 +92,7 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 		SecretKey:       getParam(envSecretKey, *secretKey),
 		AuditFile:       getParam(envAuditFile, *auditFile),
 		AuditURL:        getParam(envAuditURL, *auditURL),
+		EnableHTTPS:     getBoolParam(envEnableHTTPS, *enableHTTPS),
 	}
 }
 
@@ -93,6 +100,15 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 func getParam(envName, flagValue string) string {
 	if envValue, exists := os.LookupEnv(envName); exists && envValue != "" {
 		return envValue
+	}
+	return flagValue
+}
+
+// getBoolParam возвращает true, если ENV-переменная установлена в "true" или "1",
+// иначе возвращает значение из флага.
+func getBoolParam(envName string, flagValue bool) bool {
+	if envValue, exists := os.LookupEnv(envName); exists {
+		return envValue == "true" || envValue == "1"
 	}
 	return flagValue
 }
