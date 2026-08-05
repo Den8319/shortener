@@ -35,13 +35,11 @@ func NewStatsHandler(store *store.Store, cfg *config.Config) *StatsHandler {
 func (h *StatsHandler) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("GetStatsHandler")
 
-	
 	if h.cfg.TrustedSubnet == "" {
 		http.Error(w, "Forbidden: trusted subnet not configured", http.StatusForbidden)
 		return
 	}
 
-	
 	ipStr := r.Header.Get("X-Real-IP")
 	if ipStr == "" {
 		log.Error().Msg("IP not found in X-Real-IP header")
@@ -49,7 +47,6 @@ func (h *StatsHandler) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		log.Error().Str("ip", ipStr).Msg("failed to parse IP")
@@ -57,7 +54,6 @@ func (h *StatsHandler) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	_, cidrNet, err := net.ParseCIDR(h.cfg.TrustedSubnet)
 	if err != nil {
 		log.Error().Err(err).Str("subnet", h.cfg.TrustedSubnet).Msg("failed to parse trusted subnet")
@@ -65,14 +61,12 @@ func (h *StatsHandler) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	if !cidrNet.Contains(ip) {
 		log.Error().Str("ip", ipStr).Str("subnet", h.cfg.TrustedSubnet).Msg("IP not in trusted subnet")
 		http.Error(w, "Forbidden: IP not in trusted subnet", http.StatusForbidden)
 		return
 	}
 
-	
 	urls, users, err := h.store.Stats(r.Context())
 	if err != nil {
 		log.Error().Err(err).Msg("failed to get stats")
@@ -80,7 +74,6 @@ func (h *StatsHandler) GetStatsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	resp := StatsResponse{
 		URLs:  urls,
 		Users: users,

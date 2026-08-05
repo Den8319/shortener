@@ -13,10 +13,12 @@ import (
 	"math/big"
 	"net"
 	"net/http"
+
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/Den8319/shortener/api/proto"
 	"github.com/Den8319/shortener/internal/audit"
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/compress"
@@ -31,6 +33,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
+
+	"google.golang.org/grpc"
 )
 
 var (
@@ -76,7 +80,23 @@ func main() {
 	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
 	route := setupRoutes(h, database, cfg, s)
 
-	// 9. Создание HTTP-сервера
+	// 9. Создание gRPC-сервера
+	lis, err := net.Listen("tcp", cfg.GRPCAddress)
+	if err != nil {
+		log.Fatal().Err(err).Msg("failed to listen for gRPC")
+	}
+
+	grpcServer := grpc.NewServer()
+	gRPCHandler := handler.NewGRPCHandler(s)
+	proto.RegisterShortenerServiceServer(grpcServer, gRPCHandler)
+
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Fatal().Err(err).Msg("gRPC server stopped unexpectedly")
+		}
+	}()
+
+	// 10. Создание HTTP-сервера
 	server := &http.Server{
 		Addr:    cfg.ServerAddress,
 		Handler: route,
@@ -108,28 +128,30 @@ func main() {
 		}()
 	}
 
-	// 10. Ожидание сигнала завершения
+	// 11. Ожидание сигнала завершения
 	<-ctx.Done()
 	log.Info().Msg("shutting down server (signal received)")
 
-	// 11. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
+	// 12. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error().Err(err).Msg("server forced to shutdown")
 	}
+	// 13. Останавливаем gRPC сервер
+	grpcServer.GracefulStop()
 
-	// 12. Останавливаем воркеры удаления.
+	// 14. Останавливаем воркеры удаления.
 
 	s.CloseDeleter()
 
-	// 13. Закрываем хранилище
+	// 15. Закрываем хранилище
 	if err := s.Close(); err != nil {
 		log.Error().Err(err).Msg("failed to close store")
 	}
 
-	// 14. Закрываем аудитора
+	// 16. Закрываем аудитора
 	if err := auditor.Close(); err != nil {
 		log.Error().Err(err).Msg("failed to close auditor")
 	}
