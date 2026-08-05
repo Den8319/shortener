@@ -214,6 +214,10 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 		dbh := handler.NewDBHandler(s, cfg.BaseURL)
 		route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)
 
+		// Статистика
+		sh := handler.NewStatsHandler(s, cfg)
+		route.Get("/api/internal/stats", sh.GetStatsHandler)
+
 		log.Info().Msg("connected to database")
 	}
 

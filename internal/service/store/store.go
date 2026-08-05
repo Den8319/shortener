@@ -244,3 +244,11 @@ func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID str
 	s.DeleteQueue <- req
 	return nil
 }
+
+// Stats возвращает количество URL и уникальных пользователей.
+func (s *Store) Stats(ctx context.Context) (int, int, error) {
+	if s.loader == nil {
+		return 0, 0, errors.New("stats not supported in memory-only mode")
+	}
+	return s.loader.Stats(ctx)
+}

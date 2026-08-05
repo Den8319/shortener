@@ -57,6 +57,10 @@ const (
 	envConfig     = "CONFIG"
 	flagConfig    = "c"
 	flagConfigAlt = "config"
+
+	envTrustedSubnet     = "TRUSTED_SUBNET"
+	flagTrustedSubnet    = "t"
+	defaultTrustedSubnet = ""
 )
 
 // jsonConfigFile отражает структуру JSON-файла конфигурации.
@@ -70,6 +74,7 @@ type jsonConfigFile struct {
 	SecretKey       *string `json:"secret_key"`
 	AuditFile       *string `json:"audit_file"`
 	AuditURL        *string `json:"audit_url"`
+	TrustedSubnet   *string `json:"trusted_subnet"`
 }
 
 // Config содержит все параметры конфигурации приложения.
@@ -85,6 +90,7 @@ type Config struct {
 	AuditFile       string
 	AuditURL        string
 	EnableHTTPS     bool
+	TrustedSubnet   string
 }
 
 // New создаёт Config, читая флаги из os.Args[1:].
@@ -107,6 +113,7 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	auditFile := fs.String(flagAuditFile, defaultAuditFile, "audit log file path")
 	auditURL := fs.String(flagAuditURL, defaultAuditURL, "audit log server URL")
 	enableHTTPS := fs.Bool(flagEnableHTTPS, defaultEnableHTTPS, "enable HTTPS")
+	trustedSubnet := fs.String(flagTrustedSubnet, defaultTrustedSubnet, "trusted subnet in CIDR notation")
 	var cfgPath string
 	fs.StringVar(&cfgPath, flagConfig, "", "path to JSON config file")
 	fs.StringVar(&cfgPath, flagConfigAlt, "", "path to JSON config file (alias for -c)")
@@ -144,6 +151,7 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 		AuditFile:       resolveString(envAuditFile, *auditFile, explicitFlags[flagAuditFile], jsonCfg.AuditFile, defaultAuditFile),
 		AuditURL:        resolveString(envAuditURL, *auditURL, explicitFlags[flagAuditURL], jsonCfg.AuditURL, defaultAuditURL),
 		EnableHTTPS:     resolveBool(envEnableHTTPS, *enableHTTPS, explicitFlags[flagEnableHTTPS], jsonCfg.EnableHTTPS, defaultEnableHTTPS),
+		TrustedSubnet:   resolveString(envTrustedSubnet, *trustedSubnet, explicitFlags[flagTrustedSubnet], jsonCfg.TrustedSubnet, defaultTrustedSubnet),
 	}
 
 	return cfg

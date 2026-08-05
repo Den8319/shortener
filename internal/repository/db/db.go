@@ -218,3 +218,13 @@ func (db *DB) Delete(ctx context.Context, shortURLs []string, userUUID string) e
 	log.Info().Int("deleted", int(rowsAffected)).Msg("Soft delete batch completed")
 	return nil
 }
+
+// Stats возвращает количество URL и уникальных пользователей в сервисе.
+func (db *DB) Stats(ctx context.Context) (int, int, error) {
+	const query = `SELECT COUNT(*), COUNT(DISTINCT u_user) FROM t_urls WHERE b_deleted = false`
+	var urls, users int
+	if err := db.conn.QueryRowContext(ctx, query).Scan(&urls, &users); err != nil {
+		return 0, 0, fmt.Errorf("failed to query stats: %w", err)
+	}
+	return urls, users, nil
+}

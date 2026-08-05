@@ -26,4 +26,5 @@ type Loader interface {
 	Close() error
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
 	Delete(ctx context.Context, shortURLs []string, userUUID string) error
+	Stats(ctx context.Context) (urls int, users int, err error)
 }
