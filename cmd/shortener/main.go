@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/Den8319/shortener/internal/audit"
@@ -20,7 +21,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
+)
+
 func main() {
+
+	fmt.Println("Build version:", buildVersion)
+	fmt.Println("Build date:", buildDate)
+	fmt.Println("Build commit:", buildCommit)
+
 	// 1. Загрузка конфигурации
 	cfg := config.New()
 
@@ -132,7 +144,7 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 	// Маршруты только для БД
 	if cfg.DatabaseDSN != "" && database != nil {
 		hp := handler.NewPingHandler(database)
-		route.Get("/ping", hp.HandlerGetDbPing)
+		route.Get("/ping", hp.HandlerGetDBPing)
 
 		dbh := handler.NewDBHandler(s, cfg.BaseURL)
 		route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)

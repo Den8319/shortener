@@ -1,3 +1,4 @@
+// Package generator реализует генерацию криптостойких коротких идентификаторов URL.
 package generator
 
 import (

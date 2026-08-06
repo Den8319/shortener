@@ -119,3 +119,43 @@ func TestLoad_CreatesFileIfNotExists(t *testing.T) {
 	_, err = os.Stat(path)
 	assert.NoError(t, err, "file should exist after Load")
 }
+
+func TestGetLongURL(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "store.json")
+	fl := newTestLoader(t, path)
+
+	err := fl.Save(context.Background(), &model.URL{ShortURL: "abc12345", LongURL: "https://example.com"}, "user-1")
+	require.NoError(t, err)
+
+	got, err := fl.GetLongURL(context.Background(), "abc12345")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com", got)
+
+	_, err = fl.GetLongURL(context.Background(), "nonexistent")
+	assert.Error(t, err)
+}
+
+func TestGetUserURLs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "store.json")
+	fl := newTestLoader(t, path)
+
+	err := fl.Save(context.Background(), &model.URL{ShortURL: "short1", LongURL: "https://a.com"}, "user-1")
+	require.NoError(t, err)
+	err = fl.Save(context.Background(), &model.URL{ShortURL: "short2", LongURL: "https://b.com"}, "user-1")
+	require.NoError(t, err)
+	err = fl.Save(context.Background(), &model.URL{ShortURL: "short3", LongURL: "https://c.com"}, "user-2")
+	require.NoError(t, err)
+
+	urls, err := fl.GetUserURLs(context.Background(), "user-1")
+	require.NoError(t, err)
+	assert.Len(t, urls, 2)
+
+	urls2, err := fl.GetUserURLs(context.Background(), "user-2")
+	require.NoError(t, err)
+	assert.Len(t, urls2, 1)
+	assert.Equal(t, "https://c.com", urls2[0].LongURL)
+
+	urls3, err := fl.GetUserURLs(context.Background(), "nonexistent-user")
+	require.NoError(t, err)
+	assert.Empty(t, urls3)
+}

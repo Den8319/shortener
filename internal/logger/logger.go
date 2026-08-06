@@ -1,3 +1,5 @@
+// Package logger реализует настройку глобального логгера zerolog и middleware
+// для логирования HTTP-запросов и ответов.
 package logger
 
 import (

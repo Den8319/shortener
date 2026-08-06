@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Den8319/shortener/internal/model"
 	file "github.com/Den8319/shortener/internal/repository/file"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,7 @@ func newTestStoreB(b *testing.B) *Store {
 	b.Helper()
 	tmpFile, err := os.CreateTemp("", "store-*.json")
 	require.NoError(b, err)
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	repo, err := file.New(tmpFile.Name())
 	require.NoError(b, err)
@@ -170,11 +171,118 @@ func BenchmarkFindOrGenerate(b *testing.B) {
 	url := "https://example.com/test"
 
 	for i := 0; i < 100; i++ {
-		s.GetShortURL(context.Background(), url+"-"+string(rune('a'+i%26)), "test-user")
+		_, _ = s.GetShortURL(context.Background(), url+"-"+string(rune('a'+i%26)), "test-user")
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = s.findOrGenerate(url)
 	}
+}
+
+func TestGetShortList(t *testing.T) {
+	s := newTestStore(t)
+
+	items := []model.BatchRequestItem{
+		{Corr: "1", LongURL: "https://example.com"},
+		{Corr: "2", LongURL: "https://google.com"},
+	}
+
+	results, err := s.GetShortList(context.Background(), items, "user-1")
+	require.NoError(t, err)
+	assert.Len(t, results, 2)
+	assert.Equal(t, "1", results[0].Corr)
+	assert.Equal(t, "2", results[1].Corr)
+	assert.NotEmpty(t, results[0].ShortURL)
+	assert.NotEmpty(t, results[1].ShortURL)
+
+	// Повторный вызов — существующие URL возвращают те же короткие
+	results2, err := s.GetShortList(context.Background(), items, "user-1")
+	require.NoError(t, err)
+	assert.Equal(t, results[0].ShortURL, results2[0].ShortURL)
+	assert.Equal(t, results[1].ShortURL, results2[1].ShortURL)
+}
+
+// mockLoader — простая реализация model.Loader для тестов
+type mockLoader struct {
+	storage map[string]model.URL
+}
+
+func newMockLoader() *mockLoader {
+	return &mockLoader{storage: make(map[string]model.URL)}
+}
+
+func (m *mockLoader) Save(_ context.Context, url *model.URL, userUUID string) error {
+	url.UserUUID = userUUID
+	m.storage[url.ShortURL] = *url
+	return nil
+}
+
+func (m *mockLoader) GetLongURL(_ context.Context, shortURL string) (string, error) {
+	if u, ok := m.storage[shortURL]; ok {
+		if u.IsDeleted {
+			return "", model.ErrURLDeleted
+		}
+		return u.LongURL, nil
+	}
+	return "", fmt.Errorf("not found")
+}
+
+func (m *mockLoader) Load(_ context.Context) (map[string]string, error) {
+	result := make(map[string]string)
+	for k, v := range m.storage {
+		if !v.IsDeleted {
+			result[k] = v.LongURL
+		}
+	}
+	return result, nil
+}
+
+func (m *mockLoader) Close() error { return nil }
+
+func (m *mockLoader) GetUserURLs(_ context.Context, userUUID string) ([]model.URL, error) {
+	var result []model.URL
+	for _, u := range m.storage {
+		if u.UserUUID == userUUID && !u.IsDeleted {
+			result = append(result, u)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockLoader) Delete(_ context.Context, shortURLs []string, userUUID string) error {
+	for _, s := range shortURLs {
+		if u, ok := m.storage[s]; ok && u.UserUUID == userUUID {
+			u.IsDeleted = true
+			m.storage[s] = u
+		}
+	}
+	return nil
+}
+
+func TestDeleteURLs(t *testing.T) {
+	loader := newMockLoader()
+	s, err := New(loader)
+	require.NoError(t, err)
+	t.Cleanup(func() { s.Close() })
+
+	short1, err := s.GetShortURL(context.Background(), "https://example.com", "user-1")
+	require.NoError(t, err)
+	short2, err := s.GetShortURL(context.Background(), "https://google.com", "user-1")
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	s.StartDeleter(ctx, 2)
+
+	err = s.DeleteURLs(ctx, []string{short1, short2}, "user-1")
+	require.NoError(t, err)
+
+	// Даём время воркеру обработать
+	time.Sleep(100 * time.Millisecond)
+
+	// Удалённые URL должны возвращать ошибку
+	_, err = s.GetLongURL(context.Background(), short1)
+	assert.Error(t, err)
+	_, err = s.GetLongURL(context.Background(), short2)
+	assert.Error(t, err)
 }

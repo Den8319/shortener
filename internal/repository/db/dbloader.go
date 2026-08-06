@@ -1,3 +1,4 @@
+// Package db содержит реализацию хранилища на PostgreSQL.
 package db
 
 import (

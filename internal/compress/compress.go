@@ -1,3 +1,5 @@
+// Package compress реализует middleware для gzip-сжатия HTTP-ответов
+// и декомпрессии входящих запросов.
 package compress
 
 import (
@@ -80,7 +82,11 @@ func WithCompression(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		defer bodyReader.Close()
+		defer func() {
+			if closeErr := bodyReader.Close(); closeErr != nil {
+				log.Error().Err(closeErr).Msg("failed to close body reader")
+			}
+		}()
 		r.Body = bodyReader
 
 		cw, gzWriter, ok := newCompressWriter(w, r)
@@ -90,7 +96,9 @@ func WithCompression(next http.Handler) http.Handler {
 		}
 		defer func() {
 			if cw.compress {
-				gzWriter.Close()
+				if closeErr := gzWriter.Close(); closeErr != nil {
+					log.Error().Err(closeErr).Msg("failed to close gzip writer")
+				}
 			}
 		}()
 

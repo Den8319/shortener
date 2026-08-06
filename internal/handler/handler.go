@@ -39,10 +39,10 @@ func NewPingHandler(p model.Pinger) *PingHandler {
 	return &PingHandler{Pinger: p}
 }
 
-// HandlerGetDbPing проверяет доступность базы данных, выполняя ping-запрос.
+// HandlerGetDBPing проверяет доступность базы данных, выполняя ping-запрос.
 // Возвращает HTTP 200 OK при успешном подключении, HTTP 503 Service Unavailable если база не настроена,
 // и HTTP 500 Internal Server Error при ошибке подключения.
-func (h *PingHandler) HandlerGetDbPing(w http.ResponseWriter, r *http.Request) {
+func (h *PingHandler) HandlerGetDBPing(w http.ResponseWriter, r *http.Request) {
 	if h.Pinger == nil {
 		log.Warn().Msg("no pinger configured")
 		http.Error(w, "Database not configured", http.StatusServiceUnavailable)
@@ -181,9 +181,9 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 	shortURL, err := h.store.GetShortURL(r.Context(), req.LongURL, userUUID)
 	if err != nil {
 		if errors.Is(err, model.ErrURLAlreadyExists) {
-			fullShortURL, err := url.JoinPath(h.baseURL, shortURL)
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to build full short URL")
+			fullShortURL, joinErr := url.JoinPath(h.baseURL, shortURL)
+			if joinErr != nil {
+				log.Error().Err(joinErr).Msg("Failed to build full short URL")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -201,8 +201,8 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusConflict) // 409
-			if _, err := w.Write(enc); err != nil {
-				log.Error().Err(err).Msg("Failed to write response")
+			if _, writeErr := w.Write(enc); writeErr != nil {
+				log.Error().Err(writeErr).Msg("Failed to write response")
 			}
 
 			h.logAudit("shorten", userUUID, req.LongURL)
@@ -274,10 +274,10 @@ func (h *Handler) logAudit(action, userID, url string) {
 
 	go func(act, usr, u string) {
 		event := audit.AuditEvent{
-			Ts:     time.Now().Unix(),
-			Action: act,
-			UserID: usr,
-			URL:    u,
+			Timestamp: time.Now().Unix(),
+			Action:    act,
+			UserID:    usr,
+			URL:       u,
 		}
 		h.auditor.Notify(event)
 	}(action, userID, url)
