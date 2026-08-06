@@ -22,6 +22,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -49,11 +50,32 @@ func (p *{{.Name}}) Reset() {
 {{end}}}
 {{end}}`
 
+var zeroValues = map[string]string{
+	"string":     `""`,
+	"bool":       `false`,
+	"int":        `0`,
+	"int8":       `0`,
+	"int16":      `0`,
+	"int32":      `0`,
+	"int64":      `0`,
+	"uint":       `0`,
+	"uint8":      `0`,
+	"uint16":     `0`,
+	"uint32":     `0`,
+	"uint64":     `0`,
+	"float32":    `0`,
+	"float64":    `0`,
+	"complex64":  `0`,
+	"complex128": `0`,
+	"byte":       `0`,
+	"rune":       `0`,
+	"uintptr":    `0`,
+}
+
 func main() {
 	fmt.Println("generating reset methods")
 	if err := processPath("./..."); err != nil {
-		fmt.Println("ошибка генерации:", err.Error())
-		return
+		log.Fatal().Err(err).Msg("ошибка генерации")
 	}
 	fmt.Println("файлы сгенерированы успешно")
 }
@@ -69,7 +91,6 @@ func processPath(path string) error {
 		return err
 	}
 
-	// Pass 1: collect all reset-struct names across all packages.
 	knownStructs := make(map[string]bool)
 	packageStructs := make(map[string][]StructInfo)
 
@@ -83,7 +104,6 @@ func processPath(path string) error {
 		}
 	}
 
-	// Pass 2: generate reset.gen.go for each package with reset-structs.
 	var resultErr error
 	for _, pkg := range pkgs {
 		structs, ok := packageStructs[pkg.PkgPath]
@@ -101,7 +121,6 @@ func processPath(path string) error {
 	return resultErr
 }
 
-// scanPackage находит все структуры с // generate:reset в пакете.
 func scanPackage(pkg *packages.Package) []StructInfo {
 	var structs []StructInfo
 	for _, file := range pkg.Syntax {
@@ -203,36 +222,26 @@ func generateFile(dir, pkgName string, structs []StructInfo, knownStructs map[st
 	return nil
 }
 
+func tryReset(x string) string {
+	return fmt.Sprintf(`if v, ok := (any)(%s).(interface{ Reset() }); ok && v != nil { v.Reset() }`, x)
+}
+
+func tryResetPtr(x string) string {
+	return fmt.Sprintf(`if %s != nil { %s }`, x, tryReset(x))
+}
+
 // fieldReset генерирует код сброса поля к нулевому значению.
-//
-// Правила:
-//   - примитивы → нулевые значения (0, "", false)
-//   - слайсы → обрезка до длины 0 (s[:0])
-//   - мапы → clear(m)
-//   - указатели на примитивы → разыменование и присваивание нуля
-//   - указатели на структуры с Reset() → вызов Reset()
-//   - вложенные структуры с Reset() → вызов Reset()
-//   - прочие типы → type assertion на interface{ Reset() }
 func fieldReset(prefix, name string, expr ast.Expr, knownStructs map[string]bool) string {
 	x := prefix + name
 	switch t := expr.(type) {
 	case *ast.Ident:
-		switch t.Name {
-		case "string":
-			return fmt.Sprintf(`%s = ""`, x)
-		case "bool":
-			return fmt.Sprintf(`%s = false`, x)
-		case "int", "int8", "int16", "int32", "int64",
-			"uint", "uint8", "uint16", "uint32", "uint64",
-			"float32", "float64", "complex64", "complex128",
-			"byte", "rune", "uintptr":
-			return fmt.Sprintf(`%s = 0`, x)
-		default:
-			if knownStructs[t.Name] {
-				return fmt.Sprintf(`%s.Reset()`, x)
-			}
-			return fmt.Sprintf(`if v, ok := (any)(%s).(interface{ Reset() }); ok && v != nil { v.Reset() }`, x)
+		if zero, ok := zeroValues[t.Name]; ok {
+			return fmt.Sprintf(`%s = %s`, x, zero)
 		}
+		if knownStructs[t.Name] {
+			return fmt.Sprintf(`%s.Reset()`, x)
+		}
+		return tryReset(x)
 	case *ast.ArrayType:
 		if t.Len == nil {
 			return fmt.Sprintf(`%s = %s[:0]`, x, x)
@@ -243,27 +252,18 @@ func fieldReset(prefix, name string, expr ast.Expr, knownStructs map[string]bool
 	case *ast.StarExpr:
 		switch inner := t.X.(type) {
 		case *ast.Ident:
-			switch inner.Name {
-			case "string":
-				return fmt.Sprintf(`if %s != nil { *%s = "" }`, x, x)
-			case "bool":
-				return fmt.Sprintf(`if %s != nil { *%s = false }`, x, x)
-			case "int", "int8", "int16", "int32", "int64",
-				"uint", "uint8", "uint16", "uint32", "uint64",
-				"float32", "float64", "complex64", "complex128",
-				"byte", "rune", "uintptr":
-				return fmt.Sprintf(`if %s != nil { *%s = 0 }`, x, x)
-			default:
-				if knownStructs[inner.Name] {
-					return fmt.Sprintf(`if %s != nil { %s.Reset() }`, x, x)
-				}
-				return fmt.Sprintf(`if %s != nil { if v, ok := (any)(%s).(interface{ Reset() }); ok && v != nil { v.Reset() } }`, x, x)
+			if zero, ok := zeroValues[inner.Name]; ok {
+				return fmt.Sprintf(`if %s != nil { *%s = %s }`, x, x, zero)
 			}
+			if knownStructs[inner.Name] {
+				return fmt.Sprintf(`if %s != nil { %s.Reset() }`, x, x)
+			}
+			return tryResetPtr(x)
 		default:
-			return fmt.Sprintf(`if %s != nil { if v, ok := (any)(%s).(interface{ Reset() }); ok && v != nil { v.Reset() } }`, x, x)
+			return tryResetPtr(x)
 		}
 	case *ast.SelectorExpr:
-		return fmt.Sprintf(`if v, ok := (any)(%s).(interface{ Reset() }); ok && v != nil { v.Reset() }`, x)
+		return tryReset(x)
 	default:
 		return ""
 	}
@@ -273,18 +273,10 @@ func fieldReset(prefix, name string, expr ast.Expr, knownStructs map[string]bool
 func zeroValue(expr ast.Expr) string {
 	switch t := expr.(type) {
 	case *ast.Ident:
-		switch t.Name {
-		case "string":
-			return `""`
-		case "bool":
-			return `false`
-		case "int", "int8", "int16", "int32", "int64",
-			"uint", "uint8", "uint16", "uint32", "uint64",
-			"float32", "float64", "byte", "rune", "uintptr":
-			return `0`
-		default:
-			return t.Name + `{}`
+		if zero, ok := zeroValues[t.Name]; ok {
+			return zero
 		}
+		return t.Name + `{}`
 	case *ast.ArrayType, *ast.MapType, *ast.StarExpr:
 		return `nil`
 	default:
