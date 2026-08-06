@@ -4,9 +4,7 @@ package noexit
 
 import (
 	"go/ast"
-	"os"
-	"path/filepath"
-	"strings"
+	"go/types"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -24,19 +22,7 @@ func run(pass *analysis.Pass) (any, error) {
 		return nil, nil
 	}
 
-	// Корневая директория проекта — текущая рабочая директория.
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-
 	for _, file := range pass.Files {
-		// Анализируем только файлы, находящиеся внутри директории проекта.
-		filename := pass.Fset.Position(file.Pos()).Filename
-		if !isInDir(filename, wd) {
-			continue
-		}
-
 		ast.Inspect(file, func(n ast.Node) bool {
 			// Ищем объявление функции main.
 			fn, ok := n.(*ast.FuncDecl)
@@ -56,12 +42,15 @@ func run(pass *analysis.Pass) (any, error) {
 					return true
 				}
 
-				pkgIdent, ok := sel.X.(*ast.Ident)
+				// Для квалифицированных идентификаторов (pkg.Func) объект
+				// функции находится в карте Uses для имени функции (sel.Sel).
+				obj, ok := pass.TypesInfo.Uses[sel.Sel].(*types.Func)
 				if !ok {
 					return true
 				}
 
-				if pkgIdent.Name == "os" && sel.Sel.Name == "Exit" {
+				// Проверяем канонический путь пакета и имя функции.
+				if obj.Pkg() != nil && obj.Pkg().Path() == "os" && obj.Name() == "Exit" {
 					pass.Reportf(call.Pos(), "нельзя использовать os.Exit в функции main пакета main")
 				}
 
@@ -73,17 +62,4 @@ func run(pass *analysis.Pass) (any, error) {
 	}
 
 	return nil, nil
-}
-
-// isInDir проверяет, что файл path находится внутри директории dir.
-func isInDir(path, dir string) bool {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return false
-	}
-	rel, err := filepath.Rel(dir, abs)
-	if err != nil {
-		return false
-	}
-	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
