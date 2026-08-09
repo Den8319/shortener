@@ -272,7 +272,7 @@ func TestDeleteURLs(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	s.StartDeleter(2)
+	require.NoError(t, s.StartDeleter(2))
 	defer s.CloseDeleter()
 
 	err = s.DeleteURLs(ctx, []string{short1, short2}, "user-1")
@@ -286,4 +286,23 @@ func TestDeleteURLs(t *testing.T) {
 	assert.Error(t, err)
 	_, err = s.GetLongURL(context.Background(), short2)
 	assert.Error(t, err)
+}
+
+func TestStartDeleter_DoubleStart(t *testing.T) {
+	loader := newMockLoader()
+	s, err := New(loader)
+	require.NoError(t, err)
+	t.Cleanup(func() { s.Close() })
+
+	require.NoError(t, s.StartDeleter(2))
+	defer s.CloseDeleter()
+
+	// Повторный вызов должен вернуть ошибку
+	err = s.StartDeleter(2)
+	assert.Error(t, err)
+
+	// После CloseDeleter можно запустить заново
+	s.CloseDeleter()
+	require.NoError(t, s.StartDeleter(2))
+	s.CloseDeleter()
 }

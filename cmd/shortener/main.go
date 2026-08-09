@@ -9,10 +9,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -45,32 +47,50 @@ func main() {
 	fmt.Println("Build date:", buildDate)
 	fmt.Println("Build commit:", buildCommit)
 
-	// 1. Контекст с сигналами для graceful shutdown
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	// 1. Контекст с сигналами для graceful shutdown.
+	// sigCtx перехватывает SIGINT/SIGTERM/SIGQUIT от ОС.
+	// ctx — производный контекст с возможностью ручной отмены с причиной (CancelCauseFunc).
+	// Это позволяет горутинам серверов при падении вызвать cancel(err),
+	// а после <-ctx.Done() — через context.Cause(ctx) узнать, кто инициировал shutdown.
+	sigCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
+	ctx, cancel := context.WithCancelCause(sigCtx)
+	defer cancel(nil)
 
 	// 2. Загрузка конфигурации
-	cfg := config.New()
+	cfg, err := config.New()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid configuration: %v\n", err)
+		os.Exit(1)
+	}
 
 	// 3. Инициализация логгера и аутентификации
 	logger.InitLogger(cfg.LogLevel)
 	auth.Init(cfg.SecretKey)
 
 	// 4. Создание загрузчика данных (БД или файл)
-	loader, database := createLoader(ctx, cfg)
+	loader, database := createLoader(ctx, cfg, cancel)
 
 	// 5. Создание сервиса хранения
 	s, err := store.New(loader)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to init store")
+		log.Error().Err(err).Msg("failed to init store")
+		cancel(err)
+		return
 	}
 
 	// 6. Создание аудитора
-	auditor := initAuditor(cfg)
+	auditor := initAuditor(cfg, cancel)
 
 	// 7. Запуск воркеров для асинхронного удаления URL
 	//    Воркеры завершаются через CloseDeleter() после остановки HTTP-сервера.
-	s.StartDeleter(4)
+	if err := s.StartDeleter(4); err != nil {
+		log.Error().Err(err).Msg("failed to start delete workers")
+		cancel(err)
+		auditor.Close()
+		s.Close()
+		return
+	}
 
 	// 8. Создание обработчиков и настройка маршрутов
 	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
@@ -87,30 +107,41 @@ func main() {
 
 		certificates, err := makeCertificate()
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to create TLS certificate")
+			log.Error().Err(err).Msg("failed to create TLS certificate")
+			cancel(err)
+			s.CloseDeleter()
+			s.Close()
+			auditor.Close()
+			return
 		}
 		server.TLSConfig = &tls.Config{
 			Certificates: certificates,
 		}
 
 		go func() {
-			if err := server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Err(err).Msg("server stopped unexpectedly")
+			if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error().Err(err).Msg("server stopped unexpectedly")
+				cancel(fmt.Errorf("HTTPS server: %w", err))
 			}
 		}()
 	} else {
 		log.Info().Str("addr", cfg.ServerAddress).Msg("server started")
 
 		go func() {
-			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Fatal().Err(err).Msg("server stopped unexpectedly")
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error().Err(err).Msg("server stopped unexpectedly")
+				cancel(fmt.Errorf("HTTP server: %w", err))
 			}
 		}()
 	}
 
 	// 10. Ожидание сигнала завершения
 	<-ctx.Done()
-	log.Info().Msg("shutting down server (signal received)")
+	if cause := context.Cause(ctx); cause != nil && !errors.Is(cause, context.Canceled) {
+		log.Error().Err(cause).Msg("shutting down due to error")
+	} else {
+		log.Info().Msg("shutting down server (signal received)")
+	}
 
 	// 11. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -121,7 +152,6 @@ func main() {
 	}
 
 	// 12. Останавливаем воркеры удаления.
-
 	s.CloseDeleter()
 
 	// 13. Закрываем хранилище
@@ -138,17 +168,22 @@ func main() {
 }
 
 // createLoader создаёт загрузчик данных (БД или файл)
-func createLoader(ctx context.Context, cfg *config.Config) (model.Loader, *db.DB) {
+func createLoader(ctx context.Context, cfg *config.Config, cancel context.CancelCauseFunc) (model.Loader, *db.DB) {
 	var loader model.Loader
 	var database *db.DB
 
 	if cfg.DatabaseDSN != "" {
 		dbInstance, err := db.New(ctx, cfg.DatabaseDSN)
 		if err != nil {
-			log.Fatal().Err(err).Msg("failed to connect to database")
+			log.Error().Err(err).Msg("failed to connect to database")
+			cancel(fmt.Errorf("database: %w", err))
+			return nil, nil
 		}
 		if err = dbInstance.Migrate(ctx); err != nil {
-			log.Fatal().Err(err).Msg("failed to migrate database")
+			log.Error().Err(err).Msg("failed to migrate database")
+			cancel(fmt.Errorf("migration: %w", err))
+			dbInstance.Close()
+			return nil, nil
 		}
 		loader = dbInstance
 		database = dbInstance
@@ -158,7 +193,9 @@ func createLoader(ctx context.Context, cfg *config.Config) (model.Loader, *db.DB
 	if loader == nil && cfg.FileStoragePath != "" {
 		fileloader, err := file.New(cfg.FileStoragePath)
 		if err != nil {
-			log.Fatal().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
+			log.Error().Err(err).Str("path", cfg.FileStoragePath).Msg("failed to init file storage")
+			cancel(fmt.Errorf("file storage: %w", err))
+			return nil, nil
 		}
 		loader = fileloader
 		log.Info().Str("path", cfg.FileStoragePath).Msg("using file storage")
@@ -168,13 +205,15 @@ func createLoader(ctx context.Context, cfg *config.Config) (model.Loader, *db.DB
 }
 
 // initAuditor создаёт и настраивает аудитор
-func initAuditor(cfg *config.Config) *audit.Auditor {
+func initAuditor(cfg *config.Config, cancel context.CancelCauseFunc) *audit.Auditor {
 	auditor := audit.NewAuditor()
 
 	if cfg.AuditFile != "" {
 		fileObserver, err := audit.NewFileObserver(cfg.AuditFile)
 		if err != nil {
-			log.Fatal().Err(err).Str("audit_file", cfg.AuditFile).Msg("failed to init file audit observer")
+			log.Error().Err(err).Str("audit_file", cfg.AuditFile).Msg("failed to init file audit observer")
+			cancel(fmt.Errorf("audit file: %w", err))
+			return auditor
 		}
 		auditor.Register(fileObserver)
 		log.Info().Str("audit_file", cfg.AuditFile).Msg("file audit observer added")

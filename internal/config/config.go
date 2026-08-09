@@ -9,7 +9,6 @@
 package config
 
 import (
-	"cmp"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -88,14 +87,16 @@ type Config struct {
 }
 
 // New создаёт Config, читая флаги из os.Args[1:].
-func New() *Config {
+// Возвращает ошибку, если указанный JSON-файл конфигурации не читается или невалиден.
+func New() (*Config, error) {
 	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	return NewWithFlagSet(fs, os.Args[1:])
 }
 
 // NewWithFlagSet создаёт Config из указанного FlagSet и аргументов.
 // Используется в тестах для передачи произвольных флагов.
-func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
+// Возвращает ошибку, если указанный JSON-файл конфигурации не читается или невалиден.
+func NewWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 	// Объявляем флаги с настоящими значениями по умолчанию, чтобы -h
 	// показывал корректную справку. Явность флага определяем через fs.Visit.
 	serverAddr := fs.String(flagServerAddress, defaultServerAddress, "HTTP server address")
@@ -130,7 +131,11 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 	// Загружаем JSON-файл, если указан.
 	jsonCfg := &jsonConfigFile{}
 	if cfgPath != "" {
-		jsonCfg = loadJSONConfig(cfgPath)
+		var err error
+		jsonCfg, err = loadJSONConfig(cfgPath)
+		if err != nil {
+			return nil, fmt.Errorf("config file %s: %w", cfgPath, err)
+		}
 	}
 
 	// Формируем итоговую конфигурацию.
@@ -146,38 +151,36 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) *Config {
 		EnableHTTPS:     resolveBool(envEnableHTTPS, *enableHTTPS, explicitFlags[flagEnableHTTPS], jsonCfg.EnableHTTPS, defaultEnableHTTPS),
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // loadJSONConfig читает и парсит JSON-файл конфигурации.
-// При ошибке чтения или парсинга возвращает пустую структуру и
-// выводит предупреждение в stderr.
-func loadJSONConfig(path string) *jsonConfigFile {
+// Возвращает ошибку, если файл не читается или содержит невалидный JSON.
+func loadJSONConfig(path string) (*jsonConfigFile, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: cannot read config file %s: %v\n", path, err)
-		return &jsonConfigFile{}
+		return nil, fmt.Errorf("read: %w", err)
 	}
 	var cfg jsonConfigFile
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: cannot parse config file %s: %v\n", path, err)
-		return &jsonConfigFile{}
+		return nil, fmt.Errorf("parse: %w", err)
 	}
-	return &cfg
+	return &cfg, nil
 }
 
 // resolveString возвращает значение по цепочке приоритетов:
 // ENV > явный флаг > JSON-файл > значение по умолчанию.
 func resolveString(envName, flagValue string, flagSet bool, jsonValue *string, defaultValue string) string {
-	flagVal := ""
+	if envVal, ok := os.LookupEnv(envName); ok {
+		return envVal
+	}
 	if flagSet {
-		flagVal = flagValue
+		return flagValue
 	}
-	jsonVal := ""
 	if jsonValue != nil {
-		jsonVal = *jsonValue
+		return *jsonValue
 	}
-	return cmp.Or(os.Getenv(envName), flagVal, jsonVal, defaultValue)
+	return defaultValue
 }
 
 // resolveBool возвращает bool по цепочке приоритетов:

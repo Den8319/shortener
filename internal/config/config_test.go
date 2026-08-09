@@ -19,6 +19,7 @@ type configTestCase struct {
 	args      []string
 	envs      []envVar
 	want      *Config
+	wantErr   bool // ожидается ли ошибка от NewWithFlagSet
 	wantHTTPS bool // опция для тестирования EnableHTTPS отдельно
 }
 
@@ -77,13 +78,23 @@ func TestConfig(t *testing.T) {
 			want: def,
 		},
 		{
-			name: "empty env values fallback to defaults",
+			name: "empty env values are respected as explicitly set",
 			args: []string{},
 			envs: []envVar{
 				{envServerAddress, ""},
 				{envBaseAddress, ""},
 			},
-			want: def,
+			want: &Config{
+				ServerAddress:   "",
+				BaseURL:         "",
+				LogLevel:        defaultLogLevel,
+				FileStoragePath: defaultFileStoragePath,
+				DatabaseDSN:     defaultDatabaseDSN,
+				SecretKey:       defaultSecretKey,
+				AuditFile:       defaultAuditFile,
+				AuditURL:        defaultAuditURL,
+				EnableHTTPS:     false,
+			},
 		},
 
 		// === ENV ===
@@ -156,9 +167,9 @@ func TestConfig(t *testing.T) {
 			want: fullJSON,
 		},
 		{
-			name: "nonexistent JSON falls back to defaults",
-			args: []string{"-c", filepath.Join("testdata", "nonexistent.json")},
-			want: def,
+			name:    "nonexistent JSON returns error",
+			args:    []string{"-c", filepath.Join("testdata", "nonexistent.json")},
+			wantErr: true,
 		},
 
 		// === Приоритет ===
@@ -206,7 +217,16 @@ func TestConfig(t *testing.T) {
 			}
 
 			fs := flag.NewFlagSet("test", flag.ContinueOnError)
-			cfg := NewWithFlagSet(fs, tt.args)
+			cfg, err := NewWithFlagSet(fs, tt.args)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
 			assertEqual(t, *tt.want, *cfg)
 		})
@@ -294,7 +314,10 @@ func TestNew_ConfigFromTempFile(t *testing.T) {
 	tmpFile.Close()
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	cfg := NewWithFlagSet(fs, []string{"-c", tmpFile.Name()})
+	cfg, err := NewWithFlagSet(fs, []string{"-c", tmpFile.Name()})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if cfg.ServerAddress != ":1234" {
 		t.Errorf("ServerAddress: want %q, got %q", ":1234", cfg.ServerAddress)
