@@ -98,9 +98,6 @@ func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error)
 	if s.loader != nil {
 		url, err := s.loader.GetLongURL(ctx, shortURL)
 		if err != nil {
-			if errors.Is(err, model.ErrURLDeleted) {
-				return "", err
-			}
 			return "", err
 		}
 
@@ -189,7 +186,6 @@ func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, 
 // StartDeleter запускает пул воркеров для асинхронного удаления URL.
 // Воркеры завершаются при закрытии канала DeleteQueue (через CloseDeleter).
 func (s *Store) StartDeleter(workers int) error {
-
 	s.mu.Lock()
 	if s.startedDeleter {
 		s.mu.Unlock()

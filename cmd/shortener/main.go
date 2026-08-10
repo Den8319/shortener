@@ -15,7 +15,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-
 	"os/signal"
 	"syscall"
 	"time"
@@ -87,6 +86,7 @@ func main() {
 	auditor := initAuditor(cfg, cancel)
 
 	// 7. Запуск воркеров для асинхронного удаления URL
+	//    Воркеры завершаются через CloseDeleter() после остановки HTTP-сервера.
 	if err := s.StartDeleter(4); err != nil {
 		log.Error().Err(err).Msg("failed to start delete workers")
 		cancel(err)
@@ -134,7 +134,6 @@ func main() {
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create TLS certificate")
 			cancel(err)
-			lis.Close()
 			s.CloseDeleter()
 			s.Close()
 			auditor.Close()
@@ -180,7 +179,6 @@ func main() {
 	grpcServer.GracefulStop()
 
 	// 14. Останавливаем воркеры удаления.
-
 	s.CloseDeleter()
 
 	// 15. Закрываем хранилище
