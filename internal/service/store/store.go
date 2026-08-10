@@ -25,11 +25,13 @@ type DeleteRequest struct {
 
 // Store сервис хранения URL с кэшем в памяти.
 type Store struct {
-	urls          map[string]string
-	mu            sync.RWMutex
-	loader        model.Loader
-	DeleteQueue   chan DeleteRequest
-	deleteWorkers int
+	urls           map[string]string
+	mu             sync.RWMutex
+	loader         model.Loader
+	DeleteQueue    chan DeleteRequest
+	deleteWorkers  int
+	deleteWg       sync.WaitGroup
+	startedDeleter bool
 }
 
 // New создаёт новый Store и загружает данные из loader.
@@ -64,7 +66,7 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 	if !isNew {
 		return short, model.ErrURLAlreadyExists
 	}
-	log.Info().Bool("isNew:", isNew).Msg("GetShortURL")
+	log.Info().Bool("isNew", isNew).Msg("GetShortURL")
 
 	if s.loader != nil {
 		url := &model.URL{ShortURL: short, LongURL: longURL}
@@ -88,18 +90,14 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 func (s *Store) GetLongURL(ctx context.Context, shortURL string) (string, error) {
 	s.mu.RLock()
 	long, ok := s.urls[shortURL]
+	s.mu.RUnlock()
 	if ok {
-		s.mu.RUnlock()
 		return long, nil
 	}
-	s.mu.RUnlock()
 
 	if s.loader != nil {
 		url, err := s.loader.GetLongURL(ctx, shortURL)
 		if err != nil {
-			if errors.Is(err, model.ErrURLDeleted) {
-				return "", err
-			}
 			return "", err
 		}
 
@@ -162,8 +160,12 @@ func (s *Store) GetShortList(ctx context.Context, items []model.BatchRequestItem
 		}
 	}
 
-	for _, url := range toSave {
-		_ = s.loader.Save(ctx, &url, userUUID)
+	if s.loader != nil {
+		for _, url := range toSave {
+			if err := s.loader.Save(ctx, &url, userUUID); err != nil {
+				log.Error().Err(err).Str("short_url", url.ShortURL).Msg("failed to save URL in batch")
+			}
+		}
 	}
 
 	for _, url := range toSave {
@@ -182,35 +184,65 @@ func (s *Store) GetUserURLs(ctx context.Context, userUUID string) ([]model.URL, 
 }
 
 // StartDeleter запускает пул воркеров для асинхронного удаления URL.
-func (s *Store) StartDeleter(ctx context.Context, workers int) {
+// Воркеры завершаются при закрытии канала DeleteQueue (через CloseDeleter).
+func (s *Store) StartDeleter(workers int) error {
+	s.mu.Lock()
+	if s.startedDeleter {
+		s.mu.Unlock()
+		return errors.New("delete workers already started")
+	}
+	s.startedDeleter = true
 	s.deleteWorkers = workers
 	s.DeleteQueue = make(chan DeleteRequest, workers*2)
+	s.deleteWg.Add(workers)
+	s.mu.Unlock()
 
-	for i := 0; i < workers; i++ {
-		go s.deleteWorker(ctx)
+	for range workers {
+		go s.deleteWorker()
 	}
 	log.Info().Int("workers", workers).Msg("started delete workers")
+	return nil
+}
+
+// CloseDeleter закрывает канал очереди удаления и ожидает завершения воркеров.
+// После завершения воркеров состояние сбрасывается, и StartDeleter можно вызвать повторно.
+func (s *Store) CloseDeleter() {
+	s.mu.Lock()
+	queue := s.DeleteQueue
+	if queue == nil {
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+
+	close(queue)
+	s.deleteWg.Wait()
+
+	s.mu.Lock()
+	s.startedDeleter = false
+	s.DeleteQueue = nil
+	s.deleteWorkers = 0
+	s.mu.Unlock()
+	log.Info().Msg("delete workers stopped")
 }
 
 // deleteWorker воркер, обрабатывающий запросы на удаление.
-func (s *Store) deleteWorker(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info().Msg("delete worker shutting down")
-			return
-		case req := <-s.DeleteQueue:
-			s.processDeleteRequest(req)
-		}
+func (s *Store) deleteWorker() {
+	defer s.deleteWg.Done()
+	queue := s.DeleteQueue
+	for req := range queue {
+		s.processDeleteRequest(req)
 	}
+	log.Info().Msg("delete worker shutting down")
 }
 
 // processDeleteRequest обрабатывает один запрос на удаление URL.
 func (s *Store) processDeleteRequest(req DeleteRequest) {
-	err := s.loader.Delete(context.Background(), req.ShortURLs, req.UserID)
-	if err != nil {
-		log.Error().Err(err).Str("user_id", req.UserID).Msg("не удалось удалить URL")
-		return
+	if s.loader != nil {
+		if err := s.loader.Delete(context.Background(), req.ShortURLs, req.UserID); err != nil {
+			log.Error().Err(err).Str("user_id", req.UserID).Msg("не удалось удалить URL")
+			return
+		}
 	}
 
 	s.mu.Lock()
@@ -223,7 +255,9 @@ func (s *Store) processDeleteRequest(req DeleteRequest) {
 // DeleteURLs добавляет запрос на асинхронное удаление в очередь.
 // Перед вызовом необходимо запустить воркеры через StartDeleter.
 func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error {
-	if s.DeleteQueue == nil {
+	s.mu.RLock()
+	if !s.startedDeleter || s.DeleteQueue == nil {
+		s.mu.RUnlock()
 		return fmt.Errorf("delete queue is not initialized, call StartDeleter first")
 	}
 
@@ -234,5 +268,6 @@ func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID str
 	}
 
 	s.DeleteQueue <- req
+	s.mu.RUnlock()
 	return nil
 }

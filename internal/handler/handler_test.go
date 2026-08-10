@@ -436,9 +436,8 @@ func Test_DeleteURLsHandler(t *testing.T) {
 	h := NewHandler(s, baseURL, "test-secret-key", nil)
 
 	// Запускаем воркеры для удаления
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	s.StartDeleter(ctx, 1)
+	require.NoError(t, s.StartDeleter(1))
+	defer s.CloseDeleter()
 
 	route := chi.NewRouter()
 	route.Delete("/api/user/urls", h.DeleteURLsHandler)

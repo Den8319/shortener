@@ -267,8 +267,11 @@ func (r *Fileloader) GetUserURLs(ctx context.Context, userUUID string) ([]model.
 	return urls, nil
 }
 
-// Close закрывает файл, открытый для записи.
+// Close закрывает файл, открытый для записи, с предварительным сбросом данных на диск.
 func (r *Fileloader) Close() error {
+	if err := r.file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync file: %w", err)
+	}
 	return r.file.Close()
 }
 

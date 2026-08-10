@@ -25,7 +25,7 @@ func newTestStoreB(b *testing.B) *Store {
 	s, err := New(repo)
 	require.NoError(b, err)
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		url := fmt.Sprintf("https://benchmark-test-url-%d.com", i)
 		_, err := s.GetShortURL(context.Background(), url, "benchmark-user")
 		require.NoError(b, err)
@@ -170,7 +170,7 @@ func BenchmarkFindOrGenerate(b *testing.B) {
 	s := newTestStoreB(b)
 	url := "https://example.com/test"
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		_, _ = s.GetShortURL(context.Background(), url+"-"+string(rune('a'+i%26)), "test-user")
 	}
 
@@ -272,7 +272,8 @@ func TestDeleteURLs(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	s.StartDeleter(ctx, 2)
+	require.NoError(t, s.StartDeleter(2))
+	defer s.CloseDeleter()
 
 	err = s.DeleteURLs(ctx, []string{short1, short2}, "user-1")
 	require.NoError(t, err)
@@ -285,4 +286,23 @@ func TestDeleteURLs(t *testing.T) {
 	assert.Error(t, err)
 	_, err = s.GetLongURL(context.Background(), short2)
 	assert.Error(t, err)
+}
+
+func TestStartDeleter_DoubleStart(t *testing.T) {
+	loader := newMockLoader()
+	s, err := New(loader)
+	require.NoError(t, err)
+	t.Cleanup(func() { s.Close() })
+
+	require.NoError(t, s.StartDeleter(2))
+	defer s.CloseDeleter()
+
+	// Повторный вызов должен вернуть ошибку
+	err = s.StartDeleter(2)
+	assert.Error(t, err)
+
+	// После CloseDeleter можно запустить заново
+	s.CloseDeleter()
+	require.NoError(t, s.StartDeleter(2))
+	s.CloseDeleter()
 }
