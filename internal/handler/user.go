@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/model"
 	"github.com/rs/zerolog/log"
 )
@@ -16,23 +15,21 @@ import (
 // и HTTP 401 Unauthorized при отсутствии идентификатора пользователя.
 func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug().Msg("GetUserURLsHandler")
-	// Получаем или создаем идентификатор пользователя
-	userID := getUser(r)
-	if userID == "" {
+
+	userUUID, err := h.service.Authenticate(getAuthToken(r))
+	if err != nil {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// Получаем URL из хранилища
-	urls, err := h.store.GetUserURLs(r.Context(), userID)
+	urls, err := h.service.ListUserURLs(r.Context(), userUUID)
 	if err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("failed to get user URLs")
+		log.Error().Err(err).Str("user_id", userUUID).Msg("failed to get user URLs")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Если нет URL, возвращаем 204 No Content
 	if len(urls) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -46,7 +43,6 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Возвращаем список URL
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(fullURLs); err != nil {
@@ -57,15 +53,13 @@ func (h *Handler) GetUserURLsHandler(w http.ResponseWriter, r *http.Request) {
 // DeleteURLsHandler асинхронно удаляет URL пользователя.
 // Принимает массив идентификаторов коротких URL, возвращает HTTP 202 Accepted без ожидания завершения операции.
 func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем идентификатор пользователя
-	userID := getUser(r)
-	if userID == "" {
+	userUUID, err := h.service.Authenticate(getAuthToken(r))
+	if err != nil {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	// Читаем тело запроса
 	var request []string
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&request); err != nil {
@@ -79,11 +73,8 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Асинхронно удаляем URL (gorutina запускается внутри DeleteURLs для каждой ссылки)
-	// Возвращаем 202 Accepted сразу, без ожидания результата
-	err := h.store.DeleteURLs(r.Context(), request, userID)
-	if err != nil {
-		log.Error().Err(err).Str("user_id", userID).Msg("failed to delete URLs")
+	if err := h.service.DeleteURLs(r.Context(), request, userUUID); err != nil {
+		log.Error().Err(err).Str("user_id", userUUID).Msg("failed to delete URLs")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -91,11 +82,8 @@ func (h *Handler) DeleteURLsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// getUser извлекает идентификатор пользователя из заголовка Auth HTTP-запроса.
-// Использует токен аутентификации для получения UUID пользователя.
-func getUser(r *http.Request) string {
-
-	authCookie := r.Header.Get("Auth")
-
-	return auth.GetUser(authCookie)
+// getAuthToken извлекает JWT-токен из заголовка Auth HTTP-запроса.
+// Возвращает сырую строку токена; валидация выполняется в сервисном слое.
+func getAuthToken(r *http.Request) string {
+	return r.Header.Get("Auth")
 }

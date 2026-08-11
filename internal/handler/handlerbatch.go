@@ -3,24 +3,25 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
-	"net/url"
 
 	"github.com/Den8319/shortener/internal/model"
+	"github.com/Den8319/shortener/internal/service"
 	"github.com/rs/zerolog/log"
 )
 
 // DBHandler обрабатывает пакетное сокращение URL.
 // Предназначен для обработки множества URLs в одном запросе.
 type DBHandler struct {
-	store   model.Storage
+	service *service.Service
 	baseURL string
 }
 
 // NewDBHandler создаёт новый DBHandler для пакетного сокращения URL.
-func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
+func NewDBHandler(service *service.Service, baseURL string) *DBHandler {
 	return &DBHandler{
-		store:   store,
+		service: service,
 		baseURL: baseURL,
 	}
 }
@@ -29,18 +30,15 @@ func NewDBHandler(store model.Storage, baseURL string) *DBHandler {
 // Принимает массив объектов с длинными URL, возвращает массив с короткими URL в формате JSON.
 // При успешном обрабатывании возвращает HTTP 201 Created.
 func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) {
-	// Тело запроса уже распаковано middleware
-
-	userUUID := getUser(r)
-	log.Info().Str("userUUID", userUUID).Msg("ShortenBatchHandler")
-	if userUUID == "" {
+	userUUID, err := h.service.Authenticate(getAuthToken(r))
+	if err != nil {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	var req []model.BatchRequestItem
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
@@ -50,15 +48,12 @@ func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	for _, item := range req {
-		if _, err := url.ParseRequestURI(item.LongURL); err != nil {
-			http.Error(w, "Invalid URL: "+item.LongURL, http.StatusBadRequest)
+	results, err := h.service.ShortenBatch(r.Context(), req, userUUID)
+	if err != nil {
+		if errors.Is(err, model.ErrInvalidURL) {
+			http.Error(w, "Invalid URL in batch", http.StatusBadRequest)
 			return
 		}
-	}
-
-	results, err := h.store.GetShortList(r.Context(), req, userUUID)
-	if err != nil {
 		http.Error(w, "Failed to process batch", http.StatusInternalServerError)
 		return
 	}
@@ -70,7 +65,7 @@ func (h *DBHandler) ShortenBatchHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err = json.NewEncoder(w).Encode(results); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}

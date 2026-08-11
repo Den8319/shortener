@@ -13,6 +13,7 @@ import (
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/model"
 	fileRepo "github.com/Den8319/shortener/internal/repository/file"
+	"github.com/Den8319/shortener/internal/service"
 	"github.com/Den8319/shortener/internal/service/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
@@ -52,33 +53,9 @@ func newTestStore(t *testing.T) *store.Store {
 	return s
 }
 
-// ============================================================
-// Тесты для isValidURL
-// ============================================================
-
-func TestIsValidURL(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-		want  bool
-	}{
-		{"valid http", "http://example.com", true},
-		{"valid https", "https://example.com/path?query=1", true},
-		{"valid with port", "https://example.com:8080", true},
-		{"invalid ftp", "ftp://example.com", false},
-		{"invalid no scheme", "example.com", false},
-		{"invalid no host", "http://", false},
-		{"empty string", "", false},
-		{"whitespace only", "   ", false},
-		{"invalid format", "not a url", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := isValidURL(tt.input)
-			assert.Equal(t, tt.want, got, "isValidURL(%q)", tt.input)
-		})
-	}
+func newTestService(t *testing.T) *service.Service {
+	t.Helper()
+	return service.New(newTestStore(t))
 }
 
 // ============================================================
@@ -88,8 +65,8 @@ func TestIsValidURL(t *testing.T) {
 func Test_ShortenTextHandler(t *testing.T) {
 	longURL := "https://sberbank.ru"
 	baseURL := "https://short.ru"
-	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key", nil)
+	svc := newTestService(t)
+	h := NewHandler(svc, baseURL, nil)
 
 	route := chi.NewRouter()
 	route.Post("/", h.ShortenTextHandler)
@@ -195,8 +172,8 @@ func Test_ShortenTextHandler(t *testing.T) {
 func Test_ShortenJSONHandler(t *testing.T) {
 	longURL := "https://sberbank.ru"
 	baseURL := "https://short.ru"
-	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key", nil)
+	svc := newTestService(t)
+	h := NewHandler(svc, baseURL, nil)
 
 	route := chi.NewRouter()
 	route.Post("/api/shorten", h.ShortenJSONHandler)
@@ -311,7 +288,7 @@ func Test_GetURLHandler(t *testing.T) {
 	longURL := "https://sberbank.ru"
 	baseURL := "https://short.ru"
 	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key", nil)
+	h := NewHandler(service.New(s), baseURL, nil)
 
 	shortURL, err := s.GetShortURL(context.Background(), longURL, "test-user-uuid")
 	require.NoError(t, err)
@@ -377,7 +354,7 @@ func Test_GetURLHandler(t *testing.T) {
 func Test_GetUserURLsHandler(t *testing.T) {
 	baseURL := "https://short.ru"
 	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key", nil)
+	h := NewHandler(service.New(s), baseURL, nil)
 
 	route := chi.NewRouter()
 	route.Get("/api/user/urls", h.GetUserURLsHandler)
@@ -433,7 +410,7 @@ func Test_GetUserURLsHandler(t *testing.T) {
 func Test_DeleteURLsHandler(t *testing.T) {
 	baseURL := "https://short.ru"
 	s := newTestStore(t)
-	h := NewHandler(s, baseURL, "test-secret-key", nil)
+	h := NewHandler(service.New(s), baseURL, nil)
 
 	// Запускаем воркеры для удаления
 	require.NoError(t, s.StartDeleter(1))
@@ -501,8 +478,7 @@ func Test_DeleteURLsHandler(t *testing.T) {
 
 func Test_ShortenBatchHandler(t *testing.T) {
 	baseURL := "https://short.ru"
-	s := newTestStore(t)
-	h := NewDBHandler(s, baseURL)
+	h := NewDBHandler(newTestService(t), baseURL)
 
 	route := chi.NewRouter()
 	route.Post("/api/shorten/batch", h.ShortenBatchHandler)

@@ -18,12 +18,10 @@ func grpcCtxWithAuth(ctx context.Context, token string) context.Context {
 	return metadata.NewIncomingContext(ctx, metadata.Pairs("authorization", token))
 }
 
-
 var _ proto.ShortenerServiceServer = (*GRPCHandler)(nil)
 
 func TestGRPCHandler_ShortenURL(t *testing.T) {
-	s := newTestStore(t)
-	h := NewGRPCHandler(s)
+	h := NewGRPCHandler(newTestService(t))
 	validToken := createTestToken(t, "user-1")
 
 	tests := []struct {
@@ -73,8 +71,7 @@ func TestGRPCHandler_ShortenURL(t *testing.T) {
 }
 
 func TestGRPCHandler_ExpandURL(t *testing.T) {
-	s := newTestStore(t)
-	h := NewGRPCHandler(s)
+	h := NewGRPCHandler(newTestService(t))
 
 	// Создаём короткий URL для успешного теста
 	ctx := grpcCtxWithAuth(context.Background(), createTestToken(t, "user-1"))
@@ -124,8 +121,7 @@ func TestGRPCHandler_ExpandURL(t *testing.T) {
 }
 
 func TestGRPCHandler_ListUserURLs(t *testing.T) {
-	s := newTestStore(t)
-	h := NewGRPCHandler(s)
+	h := NewGRPCHandler(newTestService(t))
 
 	// Создаём URL от пользователя user-1
 	ctxUser1 := grpcCtxWithAuth(context.Background(), createTestToken(t, "user-1"))

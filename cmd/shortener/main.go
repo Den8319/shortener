@@ -29,6 +29,7 @@ import (
 	"github.com/Den8319/shortener/internal/model"
 	"github.com/Den8319/shortener/internal/repository/db"
 	"github.com/Den8319/shortener/internal/repository/file"
+	"github.com/Den8319/shortener/internal/service"
 	"github.com/Den8319/shortener/internal/service/store"
 
 	"github.com/go-chi/chi/v5"
@@ -87,7 +88,7 @@ func main() {
 
 	// 7. Запуск воркеров для асинхронного удаления URL
 	//    Воркеры завершаются через CloseDeleter() после остановки HTTP-сервера.
-	if err := s.StartDeleter(4); err != nil {
+	if err = s.StartDeleter(4); err != nil {
 		log.Error().Err(err).Msg("failed to start delete workers")
 		cancel(err)
 		auditor.Close()
@@ -96,8 +97,9 @@ func main() {
 	}
 
 	// 8. Создание обработчиков и настройка маршрутов
-	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
-	route := setupRoutes(h, database, cfg, s)
+	svc := service.New(s)
+	h := handler.NewHandler(svc, cfg.BaseURL, auditor)
+	route := setupRoutes(h, database, cfg, svc)
 
 	// 9. Создание gRPC-сервера
 	lis, err := net.Listen("tcp", cfg.GRPCAddress)
@@ -111,7 +113,7 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
-	gRPCHandler := handler.NewGRPCHandler(s)
+	gRPCHandler := handler.NewGRPCHandler(svc)
 	proto.RegisterShortenerServiceServer(grpcServer, gRPCHandler)
 
 	go func() {
@@ -256,7 +258,7 @@ func initAuditor(cfg *config.Config, cancel context.CancelCauseFunc) *audit.Audi
 }
 
 // setupRoutes настраивает маршруты роутера
-func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *store.Store) *chi.Mux {
+func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, svc *service.Service) *chi.Mux {
 	route := chi.NewRouter()
 
 	// Middleware
@@ -277,11 +279,11 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 		hp := handler.NewPingHandler(database)
 		route.Get("/ping", hp.HandlerGetDBPing)
 
-		dbh := handler.NewDBHandler(s, cfg.BaseURL)
+		dbh := handler.NewDBHandler(svc, cfg.BaseURL)
 		route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)
 
 		// Статистика
-		sh := handler.NewStatsHandler(s, cfg)
+		sh := handler.NewStatsHandler(svc, cfg)
 		route.Get("/api/internal/stats", sh.GetStatsHandler)
 
 		log.Info().Msg("connected to database")

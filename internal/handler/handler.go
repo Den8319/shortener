@@ -11,6 +11,7 @@ import (
 
 	"github.com/Den8319/shortener/internal/audit"
 	"github.com/Den8319/shortener/internal/model"
+	"github.com/Den8319/shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 )
@@ -18,10 +19,9 @@ import (
 // Handler обрабатывает HTTP-запросы на сокращение URL, получение длинных URL по коротким и аудит операций.
 // Содержит обработчики для получения длинных URL по коротким и для сокращения URL в текстовом и JSON форматах.
 type Handler struct {
-	store     model.Storage
-	baseURL   string
-	secretKey string
-	auditor   *audit.Auditor
+	service *service.Service
+	baseURL string
+	auditor *audit.Auditor
 }
 
 // PingHandler — обработчик для проверки доступности базы данных.
@@ -29,9 +29,9 @@ type PingHandler struct {
 	model.Pinger
 }
 
-// NewHandler создаёт новый Handler с указанным хранилищем, базовым URL, секретным ключом и аудитором.
-func NewHandler(store model.Storage, baseURL string, secretKey string, auditor *audit.Auditor) *Handler {
-	return &Handler{store: store, baseURL: baseURL, secretKey: secretKey, auditor: auditor}
+// NewHandler создаёт новый Handler с указанным сервисом, базовым URL и аудитором.
+func NewHandler(service *service.Service, baseURL string, auditor *audit.Auditor) *Handler {
+	return &Handler{service: service, baseURL: baseURL, auditor: auditor}
 }
 
 // NewPingHandler создаёт новый PingHandler для проверки доступности базы данных.
@@ -66,7 +66,7 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	longURL, err := h.store.GetLongURL(r.Context(), id)
+	longURL, err := h.service.Expand(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, model.ErrURLDeleted) {
 			w.WriteHeader(http.StatusGone)
@@ -79,7 +79,9 @@ func (h *Handler) GetURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", longURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 
-	h.logAudit("follow", getUser(r), longURL)
+	// Аудит опционален — пользователь не обязан быть авторизован для перехода.
+	userUUID, _ := h.service.Authenticate(getAuthToken(r))
+	h.logAudit("follow", userUUID, longURL)
 }
 
 // ShortenTextHandler обрабатывает сокращение URL из текстового запроса.
@@ -95,33 +97,19 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	longURL := strings.TrimSpace(string(body))
-	if !isValidURL(longURL) {
-		log.Warn().Str("bad_url", longURL).Msg("Invalid URL in plain text request")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
-	userUUID := getUser(r)
-	if userUUID == "" {
+	userUUID, err := h.service.Authenticate(getAuthToken(r))
+	if err != nil {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	shortURL, err := h.store.GetShortURL(r.Context(), longURL, userUUID)
+	result, err := h.service.Shorten(r.Context(), longURL, userUUID)
 	if err != nil {
-		if errors.Is(err, model.ErrURLAlreadyExists) {
-			fullShortURL, buildErr := url.JoinPath(h.baseURL, shortURL)
-			if buildErr != nil {
-				log.Error().Err(buildErr).Msg("Failed to build full short URL")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(fullShortURL))
-
-			h.logAudit("shorten", userUUID, longURL)
+		if errors.Is(err, model.ErrInvalidURL) {
+			log.Warn().Str("bad_url", longURL).Msg("Invalid URL in plain text request")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		log.Error().Err(err).Str("url", longURL).Msg("Failed to generate short URL")
@@ -129,15 +117,20 @@ func (h *Handler) ShortenTextHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullShortURL, err := url.JoinPath(h.baseURL, shortURL)
+	fullShortURL, err := url.JoinPath(h.baseURL, result.ShortURL)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to build full short URL")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
+	statusCode := http.StatusCreated
+	if !result.Created {
+		statusCode = http.StatusConflict
+	}
+
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	w.Write([]byte(fullShortURL))
 
 	h.logAudit("shorten", userUUID, longURL)
@@ -164,48 +157,18 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isValidURL(req.LongURL) {
-		log.Warn().Str("bad_url", req.LongURL).Msg("Invalid URL in json request")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	userUUID := getUser(r)
-	log.Info().Str("userUUID", userUUID).Msg("ShortenJSONHandler")
-	if userUUID == "" {
+	userUUID, err := h.service.Authenticate(getAuthToken(r))
+	if err != nil {
 		log.Warn().Msg("failed to get user ID")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	shortURL, err := h.store.GetShortURL(r.Context(), req.LongURL, userUUID)
+	result, err := h.service.Shorten(r.Context(), req.LongURL, userUUID)
 	if err != nil {
-		if errors.Is(err, model.ErrURLAlreadyExists) {
-			fullShortURL, joinErr := url.JoinPath(h.baseURL, shortURL)
-			if joinErr != nil {
-				log.Error().Err(joinErr).Msg("Failed to build full short URL")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			response := model.Response{
-				ShortURL: fullShortURL,
-			}
-
-			enc, marshalErr := json.Marshal(response)
-			if marshalErr != nil {
-				log.Error().Err(marshalErr).Msg("error encoding conflict response")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict) // 409
-			if _, writeErr := w.Write(enc); writeErr != nil {
-				log.Error().Err(writeErr).Msg("Failed to write response")
-			}
-
-			h.logAudit("shorten", userUUID, req.LongURL)
+		if errors.Is(err, model.ErrInvalidURL) {
+			log.Warn().Str("bad_url", req.LongURL).Msg("Invalid URL in json request")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		log.Error().Err(err).Str("long_url", req.LongURL).Msg("Failed to generate short URL")
@@ -213,7 +176,7 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fullShortURL, err := url.JoinPath(h.baseURL, shortURL)
+	fullShortURL, err := url.JoinPath(h.baseURL, result.ShortURL)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to build full short URL")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -231,38 +194,19 @@ func (h *Handler) ShortenJSONHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	statusCode := http.StatusCreated
+	if !result.Created {
+		statusCode = http.StatusConflict
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	if _, err := w.Write(enc); err != nil {
 		log.Error().Err(err).Msg("Failed to write response")
 	}
 
 	h.logAudit("shorten", userUUID, req.LongURL)
-	log.Debug().Msg("sending HTTP 201 response")
-}
-
-// isValidURL проверяет, является ли строка корректным HTTP или HTTPS URL.
-// Возвращает true, если URL валиден (имеет схему http/https и хост), иначе false.
-func isValidURL(rawURL string) bool {
-	rawURL = strings.TrimSpace(rawURL)
-	if rawURL == "" {
-		return false
-	}
-
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return false
-	}
-
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return false
-	}
-
-	if u.Host == "" {
-		return false
-	}
-
-	return true
+	log.Debug().Msg("sending HTTP response")
 }
 
 // logAudit асинхронно отправляет событие аудита о действии пользователя (сокращение URL или переход по короткой ссылке).

@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 )
@@ -96,6 +97,11 @@ type Config struct {
 	EnableHTTPS     bool
 	TrustedSubnet   string
 	GRPCAddress     string
+
+	// TrustedNet — распарсенный CIDR из TrustedSubnet.
+	// Парсится один раз при загрузке конфигурации, а не на каждый запрос.
+	// nil, если TrustedSubnet не задана.
+	TrustedNet *net.IPNet
 }
 
 // New создаёт Config, читая флаги из os.Args[1:].
@@ -166,6 +172,14 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 		EnableHTTPS:     resolveBool(envEnableHTTPS, *enableHTTPS, explicitFlags[flagEnableHTTPS], jsonCfg.EnableHTTPS, defaultEnableHTTPS),
 		TrustedSubnet:   resolveString(envTrustedSubnet, *trustedSubnet, explicitFlags[flagTrustedSubnet], jsonCfg.TrustedSubnet, defaultTrustedSubnet),
 		GRPCAddress:     resolveString(envGRPCAddress, *grpcAddress, explicitFlags[flagGRPCAddress], jsonCfg.GRPCAddress, defaultGRPCAddress),
+	}
+
+	if cfg.TrustedSubnet != "" {
+		_, ipNet, err := net.ParseCIDR(cfg.TrustedSubnet)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trusted subnet %q: %w", cfg.TrustedSubnet, err)
+		}
+		cfg.TrustedNet = ipNet
 	}
 
 	return cfg, nil
