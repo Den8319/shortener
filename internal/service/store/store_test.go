@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -251,13 +252,17 @@ func (m *mockLoader) GetUserURLs(_ context.Context, userUUID string) ([]model.UR
 }
 
 func (m *mockLoader) Delete(_ context.Context, shortURLs []string, userUUID string) error {
-	for _, s := range shortURLs {
-		if u, ok := m.storage[s]; ok && u.UserUUID == userUUID {
+	for _, shortURL := range shortURLs {
+		if u, ok := m.storage[shortURL]; ok && u.UserUUID == userUUID {
 			u.IsDeleted = true
-			m.storage[s] = u
+			m.storage[shortURL] = u
 		}
 	}
 	return nil
+}
+
+func (m *mockLoader) Stats(_ context.Context) (int, int, error) {
+	return 0, 0, errors.New("stats not supported in mock")
 }
 
 func TestDeleteURLs(t *testing.T) {

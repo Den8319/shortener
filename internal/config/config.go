@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 )
@@ -56,6 +57,14 @@ const (
 	envConfig     = "CONFIG"
 	flagConfig    = "c"
 	flagConfigAlt = "config"
+
+	envTrustedSubnet     = "TRUSTED_SUBNET"
+	flagTrustedSubnet    = "t"
+	defaultTrustedSubnet = ""
+
+	envGRPCAddress     = "GRPC_ADDRESS"
+	flagGRPCAddress    = "g"
+	defaultGRPCAddress = ":3200"
 )
 
 // jsonConfigFile отражает структуру JSON-файла конфигурации.
@@ -69,6 +78,8 @@ type jsonConfigFile struct {
 	SecretKey       *string `json:"secret_key"`
 	AuditFile       *string `json:"audit_file"`
 	AuditURL        *string `json:"audit_url"`
+	TrustedSubnet   *string `json:"trusted_subnet"`
+	GRPCAddress     *string `json:"grpc_address"`
 }
 
 // Config содержит все параметры конфигурации приложения.
@@ -84,6 +95,13 @@ type Config struct {
 	AuditFile       string
 	AuditURL        string
 	EnableHTTPS     bool
+	TrustedSubnet   string
+	GRPCAddress     string
+
+	// TrustedNet — распарсенный CIDR из TrustedSubnet.
+	// Парсится один раз при загрузке конфигурации, а не на каждый запрос.
+	// nil, если TrustedSubnet не задана.
+	TrustedNet *net.IPNet
 }
 
 // New создаёт Config, читая флаги из os.Args[1:].
@@ -108,6 +126,9 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 	auditFile := fs.String(flagAuditFile, defaultAuditFile, "audit log file path")
 	auditURL := fs.String(flagAuditURL, defaultAuditURL, "audit log server URL")
 	enableHTTPS := fs.Bool(flagEnableHTTPS, defaultEnableHTTPS, "enable HTTPS")
+	trustedSubnet := fs.String(flagTrustedSubnet, defaultTrustedSubnet, "trusted subnet in CIDR notation")
+	grpcAddress := fs.String(flagGRPCAddress, defaultGRPCAddress, "gRPC server address")
+
 	var cfgPath string
 	fs.StringVar(&cfgPath, flagConfig, "", "path to JSON config file")
 	fs.StringVar(&cfgPath, flagConfigAlt, "", "path to JSON config file (alias for -c)")
@@ -149,6 +170,16 @@ func NewWithFlagSet(fs *flag.FlagSet, args []string) (*Config, error) {
 		AuditFile:       resolveString(envAuditFile, *auditFile, explicitFlags[flagAuditFile], jsonCfg.AuditFile, defaultAuditFile),
 		AuditURL:        resolveString(envAuditURL, *auditURL, explicitFlags[flagAuditURL], jsonCfg.AuditURL, defaultAuditURL),
 		EnableHTTPS:     resolveBool(envEnableHTTPS, *enableHTTPS, explicitFlags[flagEnableHTTPS], jsonCfg.EnableHTTPS, defaultEnableHTTPS),
+		TrustedSubnet:   resolveString(envTrustedSubnet, *trustedSubnet, explicitFlags[flagTrustedSubnet], jsonCfg.TrustedSubnet, defaultTrustedSubnet),
+		GRPCAddress:     resolveString(envGRPCAddress, *grpcAddress, explicitFlags[flagGRPCAddress], jsonCfg.GRPCAddress, defaultGRPCAddress),
+	}
+
+	if cfg.TrustedSubnet != "" {
+		_, ipNet, err := net.ParseCIDR(cfg.TrustedSubnet)
+		if err != nil {
+			return nil, fmt.Errorf("invalid trusted subnet %q: %w", cfg.TrustedSubnet, err)
+		}
+		cfg.TrustedNet = ipNet
 	}
 
 	return cfg, nil

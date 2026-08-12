@@ -11,6 +11,7 @@ type Storage interface {
 	GetShortList(ctx context.Context, items []BatchRequestItem, userUUID string) ([]BatchResponseItem, error)
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
 	DeleteURLs(ctx context.Context, shortURLs []string, userUUID string) error
+	Stats(ctx context.Context) (urls int, users int, err error)
 }
 
 // Pinger — интерфейс для проверки доступности базы данных.
@@ -26,4 +27,5 @@ type Loader interface {
 	Close() error
 	GetUserURLs(ctx context.Context, userUUID string) ([]URL, error)
 	Delete(ctx context.Context, shortURLs []string, userUUID string) error
+	Stats(ctx context.Context) (urls int, users int, err error)
 }

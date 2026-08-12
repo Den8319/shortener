@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Den8319/shortener/api/proto"
 	"github.com/Den8319/shortener/internal/audit"
 	"github.com/Den8319/shortener/internal/auth"
 	"github.com/Den8319/shortener/internal/compress"
@@ -28,11 +29,14 @@ import (
 	"github.com/Den8319/shortener/internal/model"
 	"github.com/Den8319/shortener/internal/repository/db"
 	"github.com/Den8319/shortener/internal/repository/file"
+	"github.com/Den8319/shortener/internal/service"
 	"github.com/Den8319/shortener/internal/service/store"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/log"
+
+	"google.golang.org/grpc"
 )
 
 var (
@@ -84,7 +88,7 @@ func main() {
 
 	// 7. Запуск воркеров для асинхронного удаления URL
 	//    Воркеры завершаются через CloseDeleter() после остановки HTTP-сервера.
-	if err := s.StartDeleter(4); err != nil {
+	if err = s.StartDeleter(4); err != nil {
 		log.Error().Err(err).Msg("failed to start delete workers")
 		cancel(err)
 		auditor.Close()
@@ -93,10 +97,33 @@ func main() {
 	}
 
 	// 8. Создание обработчиков и настройка маршрутов
-	h := handler.NewHandler(s, cfg.BaseURL, cfg.SecretKey, auditor)
-	route := setupRoutes(h, database, cfg, s)
+	svc := service.New(s)
+	h := handler.NewHandler(svc, cfg.BaseURL, auditor)
+	route := setupRoutes(h, database, cfg, svc)
 
-	// 9. Создание HTTP-сервера
+	// 9. Создание gRPC-сервера
+	lis, err := net.Listen("tcp", cfg.GRPCAddress)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to listen for gRPC")
+		cancel(err)
+		s.CloseDeleter()
+		s.Close()
+		auditor.Close()
+		return
+	}
+
+	grpcServer := grpc.NewServer()
+	gRPCHandler := handler.NewGRPCHandler(svc)
+	proto.RegisterShortenerServiceServer(grpcServer, gRPCHandler)
+
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			log.Error().Err(err).Msg("gRPC server stopped unexpectedly")
+			cancel(fmt.Errorf("gRPC server: %w", err))
+		}
+	}()
+
+	// 10. Создание HTTP-сервера
 	server := &http.Server{
 		Addr:    cfg.ServerAddress,
 		Handler: route,
@@ -135,7 +162,7 @@ func main() {
 		}()
 	}
 
-	// 10. Ожидание сигнала завершения
+	// 11. Ожидание сигнала завершения
 	<-ctx.Done()
 	if cause := context.Cause(ctx); cause != nil && !errors.Is(cause, context.Canceled) {
 		log.Error().Err(cause).Msg("shutting down due to error")
@@ -143,23 +170,25 @@ func main() {
 		log.Info().Msg("shutting down server (signal received)")
 	}
 
-	// 11. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
+	// 12. Graceful shutdown: не принимаем новые запросы, ждём завершения активных
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownCancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error().Err(err).Msg("server forced to shutdown")
 	}
+	// 13. Останавливаем gRPC сервер
+	grpcServer.GracefulStop()
 
-	// 12. Останавливаем воркеры удаления.
+	// 14. Останавливаем воркеры удаления.
 	s.CloseDeleter()
 
-	// 13. Закрываем хранилище
+	// 15. Закрываем хранилище
 	if err := s.Close(); err != nil {
 		log.Error().Err(err).Msg("failed to close store")
 	}
 
-	// 14. Закрываем аудитора
+	// 16. Закрываем аудитора
 	if err := auditor.Close(); err != nil {
 		log.Error().Err(err).Msg("failed to close auditor")
 	}
@@ -229,7 +258,7 @@ func initAuditor(cfg *config.Config, cancel context.CancelCauseFunc) *audit.Audi
 }
 
 // setupRoutes настраивает маршруты роутера
-func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *store.Store) *chi.Mux {
+func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, svc *service.Service) *chi.Mux {
 	route := chi.NewRouter()
 
 	// Middleware
@@ -250,8 +279,12 @@ func setupRoutes(h *handler.Handler, database *db.DB, cfg *config.Config, s *sto
 		hp := handler.NewPingHandler(database)
 		route.Get("/ping", hp.HandlerGetDBPing)
 
-		dbh := handler.NewDBHandler(s, cfg.BaseURL)
+		dbh := handler.NewDBHandler(svc, cfg.BaseURL)
 		route.Post("/api/shorten/batch", dbh.ShortenBatchHandler)
+
+		// Статистика
+		sh := handler.NewStatsHandler(svc, cfg)
+		route.Get("/api/internal/stats", sh.GetStatsHandler)
 
 		log.Info().Msg("connected to database")
 	}

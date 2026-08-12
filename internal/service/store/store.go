@@ -76,6 +76,14 @@ func (s *Store) GetShortURL(ctx context.Context, longURL string, userUUID string
 			Msg("Запись в БД")
 		if err := s.loader.Save(ctx, url, userUUID); err != nil {
 			if errors.Is(err, model.ErrURLAlreadyExists) {
+				if url.ShortURL == "" {
+					if sh, ok := s.findExistingShort(longURL); ok {
+						url.ShortURL = sh
+					} else {
+						log.Error().Str("long_url", longURL).Msg("failed to resolve existing short URL on conflict")
+						return "", fmt.Errorf("failed to resolve existing short URL for %q", longURL)
+					}
+				}
 				return url.ShortURL, model.ErrURLAlreadyExists
 			}
 			return "", fmt.Errorf("failed to save URL: %w", err)
@@ -119,12 +127,20 @@ func (s *Store) Close() error {
 	return nil
 }
 
-// findOrGenerate ищет существующий короткий URL или генерирует новый.
-func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err error) {
+// findExistingShort ищет в кэше короткий URL, соответствующий longURL.
+func (s *Store) findExistingShort(longURL string) (string, bool) {
 	for sh, stored := range s.urls {
 		if stored == longURL {
-			return sh, false, nil
+			return sh, true
 		}
+	}
+	return "", false
+}
+
+// findOrGenerate ищет существующий короткий URL или генерирует новый.
+func (s *Store) findOrGenerate(longURL string) (short string, isNew bool, err error) {
+	if sh, ok := s.findExistingShort(longURL); ok {
+		return sh, false, nil
 	}
 	short, err = generator.GenerateShort(shortURLLength)
 	if err != nil {
@@ -270,4 +286,12 @@ func (s *Store) DeleteURLs(ctx context.Context, shortURLs []string, userUUID str
 	s.DeleteQueue <- req
 	s.mu.RUnlock()
 	return nil
+}
+
+// Stats возвращает количество URL и уникальных пользователей.
+func (s *Store) Stats(ctx context.Context) (int, int, error) {
+	if s.loader == nil {
+		return 0, 0, errors.New("stats not supported in memory-only mode")
+	}
+	return s.loader.Stats(ctx)
 }

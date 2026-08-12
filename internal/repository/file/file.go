@@ -279,3 +279,8 @@ func (r *Fileloader) Close() error {
 func (r *Fileloader) Delete(ctx context.Context, shortURLs []string, userUUID string) error {
 	return errors.New("unsupport")
 }
+
+// Stats не поддерживается в файловом хранилище и всегда возвращает ошибку.
+func (r *Fileloader) Stats(ctx context.Context) (int, int, error) {
+	return 0, 0, errors.New("stats not supported for file storage")
+}

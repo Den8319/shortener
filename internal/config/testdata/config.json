@@ -7,5 +7,6 @@
     "log_level": "Debug",
     "secret_key": "json-secret",
     "audit_file": "/tmp/audit.log",
-    "audit_url": "http://audit.example.com"
+    "audit_url": "http://audit.example.com",
+    "trusted_subnet": "192.168.1.0/24"
 }

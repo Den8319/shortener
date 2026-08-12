@@ -102,10 +102,11 @@ func (db *DB) GetShort(ctx context.Context, conn Connector, longURL string) (str
 }
 
 // Save сохраняет пару короткий/длинный URL в базу данных для указанного пользователя.
-// Если короткий URL уже существует (ON CONFLICT), возвращает ErrURLAlreadyExists
-// и заполняет поле ShortURL существующим значением.
+// Если длинный URL уже существует (ON CONFLICT по s_long_url), возвращает ErrURLAlreadyExists
+// и гарантированно заполняет поле ShortURL существующим значением.
 func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
-	query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_short_url) DO NOTHING RETURNING s_short_url`
+
+	query := `INSERT INTO t_urls (s_short_url, s_long_url, u_user) VALUES ($1, $2, $3) ON CONFLICT (s_long_url) DO NOTHING RETURNING s_short_url`
 
 	log.Info().
 		Str("short_url", url.ShortURL).
@@ -115,7 +116,7 @@ func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
 
 	err := db.conn.QueryRowContext(ctx, query, url.ShortURL, url.LongURL, userUUID).Scan(&url.ShortURL)
 	if err == sql.ErrNoRows {
-		log.Error().Err(err).Msg("ErrNoRows")
+		// Длинный URL уже существует — гарантированно получаем его короткий вариант.
 		existingShort, getErr := db.GetShort(ctx, db.conn, url.LongURL)
 		if getErr != nil {
 			return fmt.Errorf("failed to retrieve existing short URL: %w", getErr)
@@ -124,7 +125,7 @@ func (db *DB) Save(ctx context.Context, url *model.URL, userUUID string) error {
 		return model.ErrURLAlreadyExists // Специальная ошибка для обработки в хендлерах
 	}
 	if err != nil {
-		log.Error().Err(err).Msg("db ping failed")
+		log.Error().Err(err).Msg("failed to save URL")
 		return fmt.Errorf("failed to save URL: %w", err)
 	}
 	return nil
@@ -217,4 +218,14 @@ func (db *DB) Delete(ctx context.Context, shortURLs []string, userUUID string) e
 
 	log.Info().Int("deleted", int(rowsAffected)).Msg("Soft delete batch completed")
 	return nil
+}
+
+// Stats возвращает количество URL и уникальных пользователей в сервисе.
+func (db *DB) Stats(ctx context.Context) (int, int, error) {
+	const query = `SELECT COUNT(*), COUNT(DISTINCT u_user) FROM t_urls WHERE b_deleted = false`
+	var urls, users int
+	if err := db.conn.QueryRowContext(ctx, query).Scan(&urls, &users); err != nil {
+		return 0, 0, fmt.Errorf("failed to query stats: %w", err)
+	}
+	return urls, users, nil
 }
